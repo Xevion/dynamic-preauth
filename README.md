@@ -1,21 +1,35 @@
 # dynamic-preauth
 
-I had an idea that executables could be pre-authenticated by the server before being ran, with no interaction from the user.
+A proof of concept for server-side modification of executables for pre-authentication, built with Rust ([Salvo][salvo]).
 
-This is a proof of concept of that idea, built in Rust.
+## About
+
+I've had this idea for a while now, that you could 'pre-authenticate' an executable, right before it's downloaded by a user.
+While complex and with a host of security/pipeline concerns, it had a certain benefit that seems otherwise unattainable: authentication without user interaction.
+
+This project is a proof of concept for that idea, using Rust and Salvo to build a server that can inject a user's authentication token into an executable before it's served to them.
 
 ## How it works
 
-1. The server is provided a fully built template executable on startup.
+1. At build time, the server has release builds for the major target platforms built. They are made available to the server at runtime.
+2. At runtime, the server locates constant time variables within the executable, and remembers their location.
+3. When a user requests an executable, the server injects the user's authentication token into the executable, overwriting whatever was located at the remembered location.
 
-2. Users can 'authenticate' themselves and then download the executable.
+Now, when the user runs the executable, it will have the user's authentication token embedded within it - no recompilation or sidecar files required.
+The executable keeps a hash of the original values, so it knows if the value has been changed.
 
-3. Before the executable is served to the user, the server will inject the user's authentication token into the executable by modifying the binary.
+This application demonstrates the concept of authentication via Websockets. Downloading a new executable will create a new identifier, which is remembered by the server.
 
-4. The modified binary is then served to the user.
+In the browser, all download identifiers are shown, and running any executable will tell the server to notify the browser of the download (a sound and visual effect for the relevant identifier).
 
-5. A constant time string in the binary, now modified, is used to authenticate the binary's requests to the server.
+## Docker
 
-## Implementation
+This application is carefully constructed via the [Dockerfile](Dockerfile), built with [Railway][railway] in mind.
 
-- The testing binary is built in Docker, and is a simple Rust binary that sends a GET request to the server with the authentication token.
+- The [demo](./demo/src/main.rs) application is built for Windows and Linux x64 targets with the `rust:latest` image.
+- The [server](./src/main.rs) is built for Linux with the `rust:alpine` image.
+- The [frontend](./frontend) is built with `node:latest` and pre-compressed with Gzip, Brotli, and Zstd.
+- The final application stage is ran on `alpine:latest`.
+
+[railway]: https://railway.app
+[salvo]: https://salvo.rs
