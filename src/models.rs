@@ -1,21 +1,35 @@
+use rand::{distributions::Alphanumeric, Rng};
+use salvo::{http::cookie::Cookie, Response};
+use serde::Serialize;
 use std::{collections::HashMap, path};
 use tokio::sync::Mutex;
 
 use crate::utility::search;
 
+#[derive(Clone, Debug, Serialize)]
+pub struct Session {
+    pub tokens: Vec<String>,
+    #[serde(skip_serializing)]
+    pub last_seen: std::time::Instant,
+    #[serde(skip_serializing)]
+    pub first_seen: std::time::Instant,
+}
+
 #[derive(Default, Clone, Debug)]
-pub(crate) struct State<'a> {
+pub struct State<'a> {
     pub executables: HashMap<&'a str, Executable>,
+    pub sessions: HashMap<usize, Session>,
 }
 
 impl<'a> State<'a> {
-    pub(crate) fn new() -> Mutex<Self> {
+    pub fn new() -> Mutex<Self> {
         Mutex::new(Self {
             executables: HashMap::new(),
+            sessions: HashMap::new(),
         })
     }
 
-    pub(crate) fn add_executable(&mut self, exe_type: &'a str, exe_path: &str) {
+    pub fn add_executable(&mut self, exe_type: &'a str, exe_path: &str) {
         let data = std::fs::read(&exe_path).expect("Unable to read file");
 
         let pattern = "a".repeat(1024);
@@ -37,10 +51,32 @@ impl<'a> State<'a> {
 
         self.executables.insert(exe_type, exe);
     }
+
+    pub async fn new_session(&mut self, res: &mut Response) -> usize {
+        let mut rng = rand::thread_rng();
+        let id: usize = rng.gen();
+
+        self.sessions.insert(
+            id,
+            Session {
+                tokens: vec![],
+                last_seen: std::time::Instant::now(),
+                first_seen: std::time::Instant::now(),
+            },
+        );
+
+        res.add_cookie(
+            Cookie::build(("Session", id.to_string()))
+                .permanent()
+                .build(),
+        );
+
+        return id;
+    }
 }
 
 #[derive(Default, Clone, Debug)]
-pub(crate) struct Executable {
+pub struct Executable {
     pub data: Vec<u8>,
     pub filename: String,
     pub key_start: usize,
@@ -48,7 +84,7 @@ pub(crate) struct Executable {
 }
 
 impl Executable {
-    pub(crate) fn with_key(&self, new_key: &[u8]) -> Vec<u8> {
+    pub fn with_key(&self, new_key: &[u8]) -> Vec<u8> {
         let mut data = self.data.clone();
 
         // Copy the key into the data

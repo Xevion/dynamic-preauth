@@ -5,6 +5,7 @@ use salvo::logging::Logger;
 use salvo::prelude::{
     handler, Listener, Request, Response, Router, Server, Service, StaticDir, TcpListener,
 };
+use salvo::writing::Json;
 use tokio::sync::Mutex;
 
 use crate::models::State;
@@ -13,6 +14,31 @@ static STORE: LazyLock<Mutex<State>> = LazyLock::new(State::new);
 
 mod models;
 mod utility;
+
+#[handler]
+async fn session_middleware(req: &mut Request, res: &mut Response) {
+    match req.cookie("Session") {
+        Some(cookie) => {
+            // Check if the session exists
+            match cookie.value().parse::<usize>() {
+                Ok(session_id) => {
+                    let mut store = STORE.lock().await;
+                    if !store.sessions.contains_key(&session_id) {
+                        store.new_session(res).await;
+                    }
+                }
+                Err(_) => {
+                    let mut store = STORE.lock().await;
+                    store.new_session(res).await;
+                }
+            }
+        }
+        None => {
+            let mut store = STORE.lock().await;
+            store.new_session(res).await;
+        }
+    }
+}
 
 #[handler]
 pub async fn download(req: &mut Request, res: &mut Response) {
@@ -37,6 +63,21 @@ pub async fn download(req: &mut Request, res: &mut Response) {
     );
 }
 
+#[handler]
+pub async fn get_session(req: &mut Request, res: &mut Response) {
+    let store = STORE.lock().await;
+
+    let session_id = req
+        .cookie("Session")
+        .unwrap()
+        .value()
+        .parse::<usize>()
+        .unwrap();
+    let session = store.sessions.get(&session_id).unwrap();
+
+    res.render(Json(&session));
+}
+
 #[tokio::main]
 async fn main() {
     let port = std::env::var("PORT").unwrap_or_else(|_| "5800".to_string());
@@ -51,7 +92,9 @@ async fn main() {
     let static_dir = StaticDir::new(["./public"]).defaults("index.html");
 
     let router = Router::new()
+        .hoop(session_middleware)
         .push(Router::with_path("download/<id>").get(download))
+        .push(Router::with_path("session").get(get_session))
         .push(Router::with_path("<**path>").get(static_dir));
 
     let service = Service::new(router).hoop(Logger::new());

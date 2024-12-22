@@ -283,7 +283,9 @@ dependencies = [
 name = "dynamic-preauth"
 version = "0.1.0"
 dependencies = [
+ "rand",
  "salvo",
+ "serde",
  "tokio",
  "tracing",
  "tracing-subscriber",
