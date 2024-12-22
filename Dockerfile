@@ -35,6 +35,7 @@ COPY ./frontend/ ./
 RUN npm install pnpm -g
 RUN pnpm install
 RUN pnpm build
+RUN ./compress.sh
 
 # Run the server application
 FROM alpine:latest
