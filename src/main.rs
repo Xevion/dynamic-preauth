@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::path;
 
-use askama::Template;
 use salvo::http::HeaderValue;
 use salvo::logging::Logger;
 
@@ -46,22 +45,6 @@ fn search(buf: &[u8], pattern: &[u8], start_index: usize) -> Option<usize> {
         i += 1;
     }
     None
-}
-
-#[derive(Template)]
-#[template(path = "index.html")]
-struct IndexTemplate<'a> {
-    available: Vec<&'a str>,
-}
-
-#[handler]
-async fn index(res: &mut Response, depot: &Depot) {
-    let state = depot.obtain::<State>().unwrap();
-
-    let index_tmpl = IndexTemplate {
-        available: state.executables.keys().map(|x| *x).collect(),
-    };
-    res.render(Text::Html(index_tmpl.render().unwrap()));
 }
 
 #[handler]
@@ -160,7 +143,6 @@ async fn main() {
     let router = Router::new()
         .hoop(affix_state::inject(state))
         .push(Router::with_path("download/<id>").get(download))
-        .push(Router::new().get(index))
         .push(Router::with_path("<**path>").get(StaticDir::new(["./public"])));
 
     let service = Service::new(router).hoop(Logger::new());
