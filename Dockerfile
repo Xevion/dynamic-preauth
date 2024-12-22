@@ -22,15 +22,26 @@ RUN apk update && apk add musl-dev
 WORKDIR /build/server
 
 COPY ./src ./src
-COPY ./templates ./templates
 COPY ./Cargo.toml ./Cargo.lock ./
 RUN cargo build --release
+
+# Build the Astro frontend
+FROM node:lts AS builder-astro
+
+WORKDIR /build/astro
+
+COPY ./frontend/ ./
+
+RUN npm install pnpm -g
+RUN pnpm install
+RUN pnpm build
 
 # Run the server application
 FROM alpine:latest
 
 WORKDIR /app
 
+COPY --from=builder-astro /build/astro/dist/ ./public/
 COPY --from=builder-demo /build/demo/target/x86_64-pc-windows-gnu/release/demo.exe ./demo-windows.exe
 COPY --from=builder-demo /build/demo/target/x86_64-unknown-linux-gnu/release/demo ./demo-linux
 COPY --from=builder-server /build/server/target/release/dynamic-preauth ./dynamic-preauth
