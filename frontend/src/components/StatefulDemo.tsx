@@ -1,9 +1,9 @@
 import Badge from "@/components/Badge";
-import { plural } from "@/util";
+import { cn, plural, type ClassValue } from "@/util";
 import { useState } from "preact/hooks";
 
 type StatefulDemoProps = {
-  class?: string;
+  class?: ClassValue;
 };
 
 type SessionData = {
@@ -18,7 +18,7 @@ const StatefulDemo = ({ class: className }: StatefulDemoProps) => {
   });
 
   return (
-    <div class="px-5 leading-6">
+    <div class={cn(className, "px-5 leading-6")}>
       <p class="mt-3">
         This demo uses websockets to communicate between the server and the
         browser. Each download gets a unique identifier bound to the user
