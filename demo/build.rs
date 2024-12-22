@@ -22,12 +22,14 @@ fn main() -> Result<(), Box<dyn Error>> {
     let dest_path = Path::new(&out_dir).join("key.json");
     let mut f = BufWriter::new(File::create(&dest_path)?);
 
-    let compile_time = chrono::Utc::now().to_rfc3339();
-    let value = "Hello, world!";
+    // The value is just a 1024 character random string
+    let value = "a".repeat(1024);
+
     let value_hash = sha2::Sha256::digest(value.as_bytes());
+    let compile_time = chrono::Utc::now().to_rfc3339();
 
     let key_data = KeyData {
-        value,
+        value: &value,
         value_hash: hex::encode(value_hash),
         compile_time,
     };
