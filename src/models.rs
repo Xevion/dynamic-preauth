@@ -1,4 +1,5 @@
 use std::{collections::HashMap, path};
+use tokio::sync::Mutex;
 
 use crate::utility::search;
 
@@ -8,6 +9,12 @@ pub(crate) struct State<'a> {
 }
 
 impl<'a> State<'a> {
+    pub(crate) fn new() -> Mutex<Self> {
+        Mutex::new(Self {
+            executables: HashMap::new(),
+        })
+    }
+
     pub(crate) fn add_executable(&mut self, exe_type: &'a str, exe_path: &str) {
         let data = std::fs::read(&exe_path).expect("Unable to read file");
 
