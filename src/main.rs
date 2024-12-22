@@ -1,3 +1,7 @@
+use std::collections::HashMap;
+use std::iter::Map;
+use std::path;
+
 use salvo::http::HeaderValue;
 use salvo::logging::Logger;
 
@@ -52,7 +56,7 @@ async fn hello() -> &'static str {
 #[handler]
 async fn download(depot: &mut Depot, req: &mut Request, res: &mut Response) {
     let state = depot.obtain::<State>().unwrap();
-    let data = state.with_key(b"test"); // Clone the data
+    let data = state.exe_with_key("windows", b"test"); // Clone the data
 
     if let Err(e) = res.write_body(data) {
         eprintln!("Error writing body: {}", e);
@@ -60,34 +64,62 @@ async fn download(depot: &mut Depot, req: &mut Request, res: &mut Response) {
 
     res.headers.insert(
         "Content-Disposition",
-        HeaderValue::from_static("attachment; filename=demo"),
+        HeaderValue::from_str(format!("attachment; filename=\"{}\"", "demo.exe").as_str()).unwrap(),
     );
     res.headers.insert(
         "Content-Type",
         HeaderValue::from_static("application/octet-stream"),
     );
 }
-
-#[allow(dead_code)]
 #[derive(Default, Clone, Debug)]
 struct State {
+    executables: HashMap<String, Executable>,
+}
+
+#[derive(Default, Clone, Debug)]
+struct Executable {
     data: Vec<u8>,
+    name: String,
     key_start: usize,
     key_end: usize,
 }
 
 impl State {
-    fn with_key(&self, new_key: &[u8]) -> Vec<u8> {
-        let mut data = self.data.clone();
+    fn add_executable(&mut self, exe_type: String, exe_path: String) {
+        let data = std::fs::read(&exe_path).expect("Unable to read file");
+
+        let pattern = "a".repeat(1024);
+        let key_start = search(&data, pattern.as_bytes(), 0).unwrap();
+        let key_end = key_start + pattern.len();
+
+        let filename = path::Path::new(&exe_path)
+            .file_name()
+            .unwrap()
+            .to_string_lossy()
+            .into_owned();
+
+        let exe = Executable {
+            data,
+            name: filename,
+            key_start: key_start,
+            key_end: key_end,
+        };
+
+        self.executables.insert(exe_type, exe);
+    }
+    fn exe_with_key(&self, executable_type: &str, new_key: &[u8]) -> Vec<u8> {
+        let exe = self.executables.get(executable_type).unwrap();
+
+        let mut data = exe.data.clone();
 
         // Copy the key into the data
         for i in 0..new_key.len() {
-            data[self.key_start + i] = new_key[i];
+            data[exe.key_start + i] = new_key[i];
         }
 
         // If the new key is shorter than the old key, we just write over the remaining data
-        if new_key.len() < self.key_end - self.key_start {
-            for i in self.key_start + new_key.len()..self.key_end {
+        if new_key.len() < exe.key_end - exe.key_start {
+            for i in exe.key_start + new_key.len()..exe.key_end {
                 data[i] = b' ';
             }
         }
@@ -102,18 +134,18 @@ async fn main() {
     let addr = format!("0.0.0.0:{}", port);
     tracing_subscriber::fmt().init();
 
-    let path = "./demo/target/release/demo";
-    let data = std::fs::read(&path).expect("Unable to read file");
-
-    let pattern = "a".repeat(1024);
-    let key_start = search(&data, pattern.as_bytes(), 0).unwrap();
-    let key_end = key_start + pattern.len();
-
-    let state = State {
-        data,
-        key_start: key_start,
-        key_end: key_end,
+    let mut state = State {
+        executables: HashMap::new(),
     };
+
+    state.add_executable(
+        "windows".to_string(),
+        "./demo/target/x86_64-pc-windows-gnu/release/demo.exe".to_string(),
+    );
+    state.add_executable(
+        "linux".to_string(),
+        "./demo/target/release/demo".to_string(),
+    );
 
     let router = Router::new()
         .hoop(affix_state::inject(state))
