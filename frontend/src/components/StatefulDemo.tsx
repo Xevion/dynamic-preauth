@@ -1,4 +1,5 @@
 import Badge from "@/components/Badge";
+import Emboldened from "@/components/Emboldened";
 import { cn, plural, type ClassValue } from "@/util";
 import { useState } from "preact/hooks";
 
@@ -32,9 +33,11 @@ const StatefulDemo = ({ class: className }: StatefulDemoProps) => {
         <br />
         {session != null ? (
           <>
-            Your session is <b class="text-teal-400 font-inter">{session.id}</b>
-            . You have{" "}
-            <b class="text-teal-400 font-inter">{session.downloads.length}</b>{" "}
+            Your session is{" "}
+            <Emboldened copyable={true}>{session.id}</Emboldened>. You have{" "}
+            <Emboldened className="text-teal-400 font-inter">
+              {session.downloads.length}
+            </Emboldened>{" "}
             known {plural("download", session.downloads.length)}.
           </>
         ) : null}
