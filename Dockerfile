@@ -30,7 +30,7 @@ FROM alpine:latest
 
 WORKDIR /app
 
-COPY --from=builder-demo /build/demo/target/x86_64-pc-windows-gnu/release/demo ./demo-windows.exe
+COPY --from=builder-demo /build/demo/target/x86_64-pc-windows-gnu/release/demo.exe ./demo-windows.exe
 COPY --from=builder-demo /build/demo/target/x86_64-unknown-linux-gnu/release/demo ./demo-linux
 COPY --from=builder-server /build/server/target/release/dynamic-preauth ./dynamic-preauth
 
