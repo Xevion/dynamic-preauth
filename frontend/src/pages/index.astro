@@ -1,6 +1,51 @@
 ---
-// import Welcome from '@/components/Welcome.astro';
-import Layout from "@/layouts/Base.astro";
+import Base from "@/layouts/Base.astro";
+import StatefulDemo from "@/components/StatefulDemo.tsx";
+import "@/globals.scss";
 ---
 
-<Layout />
+<Base>
+  <div class="w-screen h-screen flex flex-col items-center middle">
+    <div
+      class="noise-card rounded-sm relative z-20 border-zinc-700 border w-full max-w-[40rem] mt-16 mb-8 shadow-lg"
+      style={{
+        backgroundPosition:
+          Math.random() * 100 + "px " + Math.random() * 100 + "px",
+      }}
+    >
+      <div class="px-3 pt-4 pb-5 font-sans prose prose-zinc prose-invert">
+        <h1
+          class="text-5xl font-bebas bold text-center mb-3 text-zinc-300"
+          style={{ textShadow: "0 0 10px rgba(0,0,0,0.7)" }}
+        >
+          Dynamic Preauthentication
+        </h1>
+        <div class="px-5 leading-6">
+          <p class="mt-1">
+            This is a proof of concept for what I'm calling <b
+              class="text-teal-500">Dynamic Preauthentication</b
+            >. Essentially, a precompiled executable keeps a constant time
+            string that has a known (or easily extracted) pattern.
+          </p>
+          <p class="mt-0">
+            When a download is requested, the server can generate and embed a
+            token that allows the application to authenticate the user
+            immediately.
+          </p>
+          <p class="mt-0">
+            This would allow users to skip the initial login process and
+            immediately start using the application. It could also be used to
+            track downloads, hint at user behaviors, or create unique user
+            experiences.
+          </p>
+        </div>
+        <div class="inline-flex items-center justify-center w-full">
+          <hr class="w-32 h-px border-0 bg-zinc-600 my-0" />
+          <span class="px-3 text-2xl font-bebas tracking-wide">Demo</span>
+          <hr class="w-32 h-px border-0 bg-zinc-600 my-0" />
+        </div>
+        <StatefulDemo client:load />
+      </div>
+    </div>
+  </div>
+</Base>
