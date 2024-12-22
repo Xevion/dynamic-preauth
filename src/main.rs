@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::iter::Map;
 use std::path;
 
 use salvo::http::HeaderValue;
@@ -54,9 +53,10 @@ async fn hello() -> &'static str {
 }
 
 #[handler]
-async fn download(depot: &mut Depot, req: &mut Request, res: &mut Response) {
+async fn download(depot: &mut Depot, _req: &mut Request, res: &mut Response) {
     let state = depot.obtain::<State>().unwrap();
     let data = state.exe_with_key("windows", b"test"); // Clone the data
+    let name = &state.executables.get("windows").unwrap().name;
 
     if let Err(e) = res.write_body(data) {
         eprintln!("Error writing body: {}", e);
@@ -64,7 +64,7 @@ async fn download(depot: &mut Depot, req: &mut Request, res: &mut Response) {
 
     res.headers.insert(
         "Content-Disposition",
-        HeaderValue::from_str(format!("attachment; filename=\"{}\"", "demo.exe").as_str()).unwrap(),
+        HeaderValue::from_str(format!("attachment; filename=\"{}\"", name).as_str()).unwrap(),
     );
     res.headers.insert(
         "Content-Type",
@@ -72,8 +72,8 @@ async fn download(depot: &mut Depot, req: &mut Request, res: &mut Response) {
     );
 }
 #[derive(Default, Clone, Debug)]
-struct State {
-    executables: HashMap<String, Executable>,
+struct State<'a> {
+    executables: HashMap<&'a str, Executable>,
 }
 
 #[derive(Default, Clone, Debug)]
@@ -84,8 +84,8 @@ struct Executable {
     key_end: usize,
 }
 
-impl State {
-    fn add_executable(&mut self, exe_type: String, exe_path: String) {
+impl<'a> State<'a> {
+    fn add_executable(&mut self, exe_type: &'a str, exe_path: &str) {
         let data = std::fs::read(&exe_path).expect("Unable to read file");
 
         let pattern = "a".repeat(1024);
@@ -138,14 +138,8 @@ async fn main() {
         executables: HashMap::new(),
     };
 
-    state.add_executable(
-        "windows".to_string(),
-        "./demo/target/x86_64-pc-windows-gnu/release/demo.exe".to_string(),
-    );
-    state.add_executable(
-        "linux".to_string(),
-        "./demo/target/release/demo".to_string(),
-    );
+    state.add_executable("windows", "./demo-windows.exe");
+    state.add_executable("linux", "./demo-linux");
 
     let router = Router::new()
         .hoop(affix_state::inject(state))
