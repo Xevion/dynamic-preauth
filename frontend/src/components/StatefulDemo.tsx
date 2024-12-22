@@ -1,7 +1,7 @@
 import Badge from "@/components/Badge";
 import Emboldened from "@/components/Emboldened";
 import { cn, plural, type ClassValue } from "@/util";
-import { useState } from "preact/hooks";
+import { useRef, useState } from "preact/hooks";
 
 type StatefulDemoProps = {
   class?: ClassValue;
@@ -24,6 +24,22 @@ const StatefulDemo = ({ class: className }: StatefulDemoProps) => {
     downloads: Array.from({ length: 7 }).map(() => "0×" + randomBits(16)),
   });
 
+  const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
+  const highlightedTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  function highlight(index: number) {
+    setHighlightedIndex(index);
+
+    if (highlightedTimeoutRef.current != null) {
+      clearTimeout(highlightedTimeoutRef.current);
+    }
+
+    highlightedTimeoutRef.current = setTimeout(() => {
+      highlightedTimeoutRef.current = null;
+      setHighlightedIndex(null);
+    }, 1000 * 10);
+  }
+
   return (
     <div class={cn(className, "px-5 leading-6")}>
       <p class="mt-3 mb-3">
@@ -43,10 +59,16 @@ const StatefulDemo = ({ class: className }: StatefulDemoProps) => {
         ) : null}
       </p>
       <div class="flex flex-wrap justify-center gap-y-2.5">
-        {session?.downloads.map((download) => (
+        {session?.downloads.map((download, i) => (
           <Badge
-            className="grow-0"
+            className={cn(
+              "transition-colors border hover:border-zinc-500 duration-100 ease-in border-transparent",
+              {
+                "!border-zinc-300 dark:bg-zinc-600": i === highlightedIndex,
+              }
+            )}
             onClick={function onClick() {
+              highlight(i);
               const audio = new Audio("/notify.wav");
               audio.volume = 0.3;
               audio.play();
