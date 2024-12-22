@@ -1,4 +1,5 @@
 import Badge from "@/components/Badge";
+import { plural } from "@/util";
 import { useState } from "preact/hooks";
 
 type StatefulDemoProps = {
@@ -11,9 +12,9 @@ type SessionData = {
 };
 
 const StatefulDemo = ({ class: className }: StatefulDemoProps) => {
-  const [session, setSession] = useState<SessionData>({
-    id: "0x59AF5",
-    downloads: ["0xABF4"],
+  const [session, setSession] = useState<SessionData | null>({
+    id: "0x59AF5BC09",
+    downloads: ["0xABF4", "0x1F3A", "0x2F3A"],
   });
 
   return (
@@ -23,10 +24,14 @@ const StatefulDemo = ({ class: className }: StatefulDemoProps) => {
         browser. Each download gets a unique identifier bound to the user
         session.
         <br />
-        Your session is{" "}
-        <b class="text-teal-400 font-inter">{session?.id ?? "loading"}</b>. You
-        have <b class="text-teal-400 font-inter">{session?.downloads.length}</b>{" "}
-        known downloads.
+        {session != null ? (
+          <>
+            Your session is <b class="text-teal-400 font-inter">{session.id}</b>
+            . You have{" "}
+            <b class="text-teal-400 font-inter">{session.downloads.length}</b>{" "}
+            known {plural("download", session.downloads.length)}.
+          </>
+        ) : null}
       </p>
       <div>
         {session?.downloads.map((download) => (
