@@ -26,11 +26,10 @@ RUN cargo build --release
 # Run the server application
 FROM alpine:latest
 
-ARG PORT=5800
-EXPOSE ${PORT}
 WORKDIR /app
 
 COPY --from=builder-demo /build/demo/target/release/demo ./demo
 COPY --from=builder-server /build/server/target/release/dynamic-preauth ./dynamic-preauth
 
+EXPOSE 5800
 CMD ["/app/dynamic-preauth"]
