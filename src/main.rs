@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::path;
 
+use askama::Template;
 use salvo::http::HeaderValue;
 use salvo::logging::Logger;
 
@@ -47,16 +48,29 @@ fn search(buf: &[u8], pattern: &[u8], start_index: usize) -> Option<usize> {
     None
 }
 
-#[handler]
-async fn hello() -> &'static str {
-    "Hello World"
+#[derive(Template)]
+#[template(path = "index.html")]
+struct IndexTemplate<'a> {
+    available: Vec<&'a str>,
 }
 
 #[handler]
-async fn download(depot: &mut Depot, _req: &mut Request, res: &mut Response) {
+async fn index(res: &mut Response, depot: &Depot) {
     let state = depot.obtain::<State>().unwrap();
-    let data = state.exe_with_key("windows", b"test"); // Clone the data
-    let name = &state.executables.get("windows").unwrap().name;
+
+    let index_tmpl = IndexTemplate {
+        available: state.executables.keys().map(|x| *x).collect(),
+    };
+    res.render(Text::Html(index_tmpl.render().unwrap()));
+}
+
+#[handler]
+async fn download(depot: &mut Depot, req: &mut Request, res: &mut Response) {
+    let article_id = req.param::<String>("id").unwrap();
+
+    let state = depot.obtain::<State>().unwrap();
+    let executable = state.executables.get(&article_id as &str).unwrap();
+    let data = executable.with_key(b"test");
 
     if let Err(e) = res.write_body(data) {
         eprintln!("Error writing body: {}", e);
@@ -64,7 +78,8 @@ async fn download(depot: &mut Depot, _req: &mut Request, res: &mut Response) {
 
     res.headers.insert(
         "Content-Disposition",
-        HeaderValue::from_str(format!("attachment; filename=\"{}\"", name).as_str()).unwrap(),
+        HeaderValue::from_str(format!("attachment; filename=\"{}\"", executable.filename).as_str())
+            .unwrap(),
     );
     res.headers.insert(
         "Content-Type",
@@ -79,7 +94,7 @@ struct State<'a> {
 #[derive(Default, Clone, Debug)]
 struct Executable {
     data: Vec<u8>,
-    name: String,
+    filename: String,
     key_start: usize,
     key_end: usize,
 }
@@ -100,26 +115,27 @@ impl<'a> State<'a> {
 
         let exe = Executable {
             data,
-            name: filename,
+            filename,
             key_start: key_start,
             key_end: key_end,
         };
 
         self.executables.insert(exe_type, exe);
     }
-    fn exe_with_key(&self, executable_type: &str, new_key: &[u8]) -> Vec<u8> {
-        let exe = self.executables.get(executable_type).unwrap();
+}
 
-        let mut data = exe.data.clone();
+impl Executable {
+    fn with_key(&self, new_key: &[u8]) -> Vec<u8> {
+        let mut data = self.data.clone();
 
         // Copy the key into the data
         for i in 0..new_key.len() {
-            data[exe.key_start + i] = new_key[i];
+            data[self.key_start + i] = new_key[i];
         }
 
         // If the new key is shorter than the old key, we just write over the remaining data
-        if new_key.len() < exe.key_end - exe.key_start {
-            for i in exe.key_start + new_key.len()..exe.key_end {
+        if new_key.len() < self.key_end - self.key_start {
+            for i in self.key_start + new_key.len()..self.key_end {
                 data[i] = b' ';
             }
         }
@@ -143,8 +159,9 @@ async fn main() {
 
     let router = Router::new()
         .hoop(affix_state::inject(state))
-        .get(hello)
-        .push(Router::with_path("download").get(download));
+        .push(Router::with_path("download/<id>").get(download))
+        .push(Router::new().get(index))
+        .push(Router::with_path("<**path>").get(StaticDir::new(["./public"])));
 
     let service = Service::new(router).hoop(Logger::new());
 
