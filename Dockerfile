@@ -22,6 +22,7 @@ RUN apk update && apk add musl-dev
 WORKDIR /build/server
 
 COPY ./src ./src
+COPY ./templates ./templates
 COPY ./Cargo.toml ./Cargo.lock ./
 RUN cargo build --release
 
