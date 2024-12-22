@@ -1,0 +1,10 @@
+[package]
+name = "dynamic-preauth"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+salvo = "0.74.3"
+tokio = { version = "1", features = ["macros"] }
+tracing = "0.1"
+tracing-subscriber = "0.3"
