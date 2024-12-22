@@ -37,7 +37,7 @@ const StatefulDemo = ({ class: className }: StatefulDemoProps) => {
     highlightedTimeoutRef.current = setTimeout(() => {
       highlightedTimeoutRef.current = null;
       setHighlightedIndex(null);
-    }, 1000 * 10);
+    }, 1250);
   }
 
   return (
