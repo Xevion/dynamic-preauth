@@ -6,6 +6,9 @@ import preact from "@astrojs/preact";
 
 // https://astro.build/config
 export default defineConfig({
+  build: {
+    assets: "assets",
+  },
   site: process.env.DEV
     ? "https://localhost:4321"
     : `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`,
