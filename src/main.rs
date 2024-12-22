@@ -140,10 +140,12 @@ async fn main() {
     state.add_executable("windows", "./demo-windows.exe");
     state.add_executable("linux", "./demo-linux");
 
+    let static_dir = StaticDir::new(["./public"]).defaults("index.html");
+
     let router = Router::new()
         .hoop(affix_state::inject(state))
         .push(Router::with_path("download/<id>").get(download))
-        .push(Router::with_path("<**path>").get(StaticDir::new(["./public"])));
+        .push(Router::with_path("<**path>").get(static_dir));
 
     let service = Service::new(router).hoop(Logger::new());
 
