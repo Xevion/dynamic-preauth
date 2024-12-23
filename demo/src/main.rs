@@ -27,6 +27,7 @@ fn main() {
     }
 
     // TODO: Use token to make request
+
     // Check the hash of the value
     let value_hash = sha2::Sha256::digest(key_data.value.as_bytes());
     let hash_match = hex::encode(value_hash) == key_data.value_hash;

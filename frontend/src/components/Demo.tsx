@@ -1,10 +1,10 @@
 import Badge from "@/components/Badge";
 import Emboldened from "@/components/Emboldened";
+import useSocket from "@/components/useSocket";
 import { cn, plural, type ClassValue } from "@/util";
 import { useRef, useState } from "preact/hooks";
-import { useEffect } from "preact/hooks";
 
-type StatefulDemoProps = {
+type DemoProps = {
   class?: ClassValue;
 };
 
@@ -13,50 +13,15 @@ type SessionData = {
   downloads: string[];
 };
 
-const StatefulDemo = ({ class: className }: StatefulDemoProps) => {
-  useEffect(() => {
-    const socket = new WebSocket(
-      (window.location.protocol === "https:" ? "wss://" : "ws://") +
-        (import.meta.env.DEV != undefined
-          ? "localhost:5800"
-          : window.location.host) +
-        "/ws"
-    );
-
-    socket.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-
-      if (data.type == undefined)
-        throw new Error("Received message without type");
-
-      switch (data.type) {
-        case "session":
-          setSession(data.session);
-          break;
-        default:
-          console.warn("Received unknown message type", data.type);
-      }
-    };
-
-    socket.onclose = () => {
-      console.log("WebSocket connection closed");
-    };
-
-    return () => {
-      socket.close();
-    };
-  }, []);
+const Demo = ({ class: className }: DemoProps) => {
+  const { id, downloads } = useSocket();
   // TODO: Toasts
+
   const randomBits = (bits: number) =>
     Math.floor(Math.random() * 2 ** bits)
       .toString(16)
       .padStart(bits / 4, "0")
       .toUpperCase();
-
-  const [session, setSession] = useState<SessionData | null>({
-    id: "0×" + randomBits(32),
-    downloads: Array.from({ length: 7 }).map(() => "0×" + randomBits(16)),
-  });
 
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
   const highlightedTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -81,19 +46,18 @@ const StatefulDemo = ({ class: className }: StatefulDemoProps) => {
         browser. Each download gets a unique identifier bound to the user
         session.
         <br />
-        {session != null ? (
-          <>
-            Your session is{" "}
-            <Emboldened copyable={true}>{session.id}</Emboldened>. You have{" "}
-            <Emboldened className="text-teal-400 font-inter">
-              {session.downloads.length}
-            </Emboldened>{" "}
-            known {plural("download", session.downloads.length)}.
-          </>
-        ) : null}
+        Your session is{" "}
+        <Emboldened skeletonWidth="0x12345678" copyable={true}>
+          {id}
+        </Emboldened>
+        . You have{" "}
+        <Emboldened className="text-teal-400 font-inter">
+          {downloads?.length ?? null}
+        </Emboldened>{" "}
+        known {plural("download", downloads?.length ?? 0)}.
       </p>
       <div class="flex flex-wrap justify-center gap-y-2.5">
-        {session?.downloads.map((download, i) => (
+        {downloads?.map((download, i) => (
           <Badge
             className={cn(
               "transition-colors border hover:border-zinc-500 duration-100 ease-in border-transparent",
@@ -111,6 +75,7 @@ const StatefulDemo = ({ class: className }: StatefulDemoProps) => {
             {download}
           </Badge>
         ))}
+        <Badge>download</Badge>
       </div>
       <div class="mt-4 p-2 bg-zinc-900/90 rounded-md border border-zinc-700">
         <p class="my-0">
@@ -123,4 +88,4 @@ const StatefulDemo = ({ class: className }: StatefulDemoProps) => {
   );
 };
 
-export default StatefulDemo;
+export default Demo;
