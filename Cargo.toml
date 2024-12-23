@@ -9,7 +9,8 @@ futures-util = "0.3.31"
 rand = "0.8.5"
 salvo = { version = "0.74.3", features = ["affix-state", "catch-panic", "cors", "logging", "serve-static", "websocket"] }
 serde = { version = "1.0.216", features = ["derive"] }
+serde_json = "1.0.134"
 tokio = { version = "1", features = ["macros"] }
 tokio-stream = "0.1.17"
 tracing = "0.1"
-tracing-subscriber = "0.3"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }

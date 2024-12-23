@@ -2,6 +2,7 @@ use std::env;
 use std::sync::LazyLock;
 
 use futures_util::{FutureExt, StreamExt};
+use models::IncomingMessage;
 use salvo::cors::Cors;
 use salvo::http::{HeaderValue, Method, StatusCode, StatusError};
 use salvo::logging::Logger;
@@ -14,6 +15,7 @@ use salvo::writing::Json;
 use salvo::Depot;
 use tokio::sync::{mpsc, Mutex};
 use tokio_stream::wrappers::UnboundedReceiverStream;
+use tracing_subscriber::EnvFilter;
 
 use crate::models::State;
 
@@ -31,11 +33,13 @@ async fn session_middleware(req: &mut Request, res: &mut Response, depot: &mut D
                 Ok(session_id) => {
                     let mut store = STORE.lock().await;
                     if !store.sessions.contains_key(&session_id) {
+                        tracing::debug!("Session provided in cookie, but does not exist");
                         let id = store.new_session(res).await;
                         depot.insert("session_id", id);
                     }
                 }
                 Err(_) => {
+                    tracing::debug!("Session provided in cookie, but is not a valid number");
                     let mut store = STORE.lock().await;
                     let id = store.new_session(res).await;
 
@@ -44,6 +48,7 @@ async fn session_middleware(req: &mut Request, res: &mut Response, depot: &mut D
             }
         }
         None => {
+            tracing::debug!("Session was not provided in cookie");
             let mut store = STORE.lock().await;
             let id = store.new_session(res).await;
 
@@ -80,9 +85,19 @@ async fn handle_socket(session_id: usize, ws: WebSocket) {
     // Handle incoming messages
     let fut = async move {
         let mut store = STORE.lock().await;
-        let session = store.sessions.get_mut(&session_id).unwrap();
-        session.tx = Some(tx);
+        // let session = store
+        //     .sessions
+        //     .get_mut(&session_id)
+        //     .expect("Unable to get session");
+        // tx.send(Ok(Message::ping("1")))
+        // .expect("Unable to send message");
+        // session.tx = Some(tx);
         drop(store);
+
+        tracing::info!(
+            "WebSocket connection established for session_id: {}",
+            session_id
+        );
 
         while let Some(result) = user_ws_rx.next().await {
             let msg = match result {
@@ -93,19 +108,52 @@ async fn handle_socket(session_id: usize, ws: WebSocket) {
                 }
             };
 
-            println!("Received message: {:?}", msg);
+            if msg.is_close() {
+                tracing::info!("WebSocket closing for Session {}", session_id);
+                break;
+            }
+
+            if msg.is_text() {
+                let text = msg.to_str().unwrap();
+
+                // Deserialize
+                match serde_json::from_str::<IncomingMessage>(text) {
+                    Ok(message) => {
+                        tracing::info!("Received message: {:?}", message);
+                    }
+                    Err(e) => {
+                        tracing::error!("Error deserializing message: {} {}", text, e);
+                    }
+                }
+            }
         }
     };
     tokio::task::spawn(fut);
 }
 
 #[handler]
-pub async fn download(req: &mut Request, res: &mut Response) {
-    let download_id = req.param::<String>("id").unwrap();
+pub async fn download(req: &mut Request, res: &mut Response, depot: &mut Depot) {
+    let download_id = req
+        .param::<String>("id")
+        .expect("Download ID required to download file");
 
-    let store = STORE.lock().await;
-    let executable = store.executables.get(&download_id as &str).unwrap();
-    let data = executable.with_key(b"test");
+    let session_id =
+        get_session_id(req, depot).expect("Session ID could not be found via request or depot");
+
+    let store = &mut *STORE.lock().await;
+
+    let session = store
+        .sessions
+        .get_mut(&session_id)
+        .expect("Session not found");
+    let executable = store
+        .executables
+        .get(&download_id as &str)
+        .expect("Executable not found");
+
+    // Create a download for the session
+    let session_download = session.add_download(executable);
+    let data = executable.with_key(session_id.to_string().as_bytes());
 
     if let Err(e) = res.write_body(data) {
         eprintln!("Error writing body: {}", e);
@@ -115,8 +163,10 @@ pub async fn download(req: &mut Request, res: &mut Response) {
 
     res.headers.insert(
         "Content-Disposition",
-        HeaderValue::from_str(format!("attachment; filename=\"{}\"", executable.filename).as_str())
-            .unwrap(),
+        HeaderValue::from_str(
+            format!("attachment; filename=\"{}\"", session_download.filename).as_str(),
+        )
+        .expect("Unable to create header"),
     );
     res.headers.insert(
         "Content-Type",
@@ -144,6 +194,7 @@ pub async fn get_session(req: &mut Request, res: &mut Response, depot: &mut Depo
     }
 }
 
+// Acquires the session id from the request, preferring the request Cookie
 fn get_session_id(req: &Request, depot: &Depot) -> Option<usize> {
     match req.cookie("Session") {
         Some(cookie) => match cookie.value().parse::<usize>() {
@@ -161,11 +212,19 @@ fn get_session_id(req: &Request, depot: &Depot) -> Option<usize> {
 async fn main() {
     let port = std::env::var("PORT").unwrap_or_else(|_| "5800".to_string());
     let addr = format!("0.0.0.0:{}", port);
-    tracing_subscriber::fmt().init();
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::new(format!(
+            "info,dynamic_preauth={}",
+            // Only log our message in debug mode
+            match cfg!(debug_assertions) {
+                true => "debug",
+                false => "info",
+            }
+        )))
+        .init();
 
     // Check if we are deployed on Railway
     let is_railway = env::var("RAILWAY_PROJECT_ID").is_ok();
-
     if is_railway {
         let build_logs = format!(
             "https://railway.com/project/{}/service/{}?environmentId={}&id={}#build",
@@ -175,7 +234,7 @@ async fn main() {
             env::var("RAILWAY_DEPLOYMENT_ID").unwrap()
         );
 
-        println!("Build logs available here: {}", build_logs);
+        tracing::info!("Build logs available here: {}", build_logs);
     }
 
     // Add the executables to the store
@@ -201,6 +260,7 @@ async fn main() {
         .allow_origin(&origin)
         .allow_methods(vec![Method::GET])
         .into_handler();
+    tracing::debug!("CORS Origin: {}", &origin);
 
     let static_dir = StaticDir::new(["./public"]).defaults("index.html");
 
