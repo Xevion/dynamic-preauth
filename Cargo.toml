@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+chrono = { version = "0.4.39", features = ["serde"] }
 rand = "0.8.5"
 salvo = { version = "0.74.3", features = ["affix-state", "logging", "serve-static"] }
 serde = { version = "1.0.216", features = ["derive"] }

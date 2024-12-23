@@ -1,11 +1,12 @@
 use std::sync::LazyLock;
 
-use salvo::http::HeaderValue;
+use salvo::http::{HeaderValue, StatusCode};
 use salvo::logging::Logger;
 use salvo::prelude::{
     handler, Listener, Request, Response, Router, Server, Service, StaticDir, TcpListener,
 };
 use salvo::writing::Json;
+use salvo::Depot;
 use tokio::sync::Mutex;
 
 use crate::models::State;
@@ -16,7 +17,7 @@ mod models;
 mod utility;
 
 #[handler]
-async fn session_middleware(req: &mut Request, res: &mut Response) {
+async fn session_middleware(req: &mut Request, res: &mut Response, depot: &mut Depot) {
     match req.cookie("Session") {
         Some(cookie) => {
             // Check if the session exists
@@ -24,18 +25,23 @@ async fn session_middleware(req: &mut Request, res: &mut Response) {
                 Ok(session_id) => {
                     let mut store = STORE.lock().await;
                     if !store.sessions.contains_key(&session_id) {
-                        store.new_session(res).await;
+                        let id = store.new_session(res).await;
+                        depot.insert("session_id", id);
                     }
                 }
                 Err(_) => {
                     let mut store = STORE.lock().await;
-                    store.new_session(res).await;
+                    let id = store.new_session(res).await;
+
+                    depot.insert("session_id", id);
                 }
             }
         }
         None => {
             let mut store = STORE.lock().await;
-            store.new_session(res).await;
+            let id = store.new_session(res).await;
+
+            depot.insert("session_id", id);
         }
     }
 }
@@ -64,18 +70,34 @@ pub async fn download(req: &mut Request, res: &mut Response) {
 }
 
 #[handler]
-pub async fn get_session(req: &mut Request, res: &mut Response) {
+pub async fn get_session(req: &mut Request, res: &mut Response, depot: &mut Depot) {
     let store = STORE.lock().await;
 
-    let session_id = req
-        .cookie("Session")
-        .unwrap()
-        .value()
-        .parse::<usize>()
-        .unwrap();
-    let session = store.sessions.get(&session_id).unwrap();
+    let session_id = match req.cookie("Session") {
+        Some(cookie) => match cookie.value().parse::<usize>() {
+            Ok(id) => id,
+            _ => {
+                res.status_code(StatusCode::BAD_REQUEST);
+                return;
+            }
+        },
+        None => match depot.get::<usize>("session_id") {
+            Ok(id) => *id,
+            _ => {
+                res.status_code(StatusCode::BAD_REQUEST);
+                return;
+            }
+        },
+    };
 
-    res.render(Json(&session));
+    match store.sessions.get(&session_id) {
+        Some(session) => {
+            res.render(Json(&session));
+        }
+        None => {
+            res.status_code(StatusCode::BAD_REQUEST);
+        }
+    }
 }
 
 #[tokio::main]

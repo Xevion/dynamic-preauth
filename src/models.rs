@@ -9,10 +9,8 @@ use crate::utility::search;
 #[derive(Clone, Debug, Serialize)]
 pub struct Session {
     pub tokens: Vec<String>,
-    #[serde(skip_serializing)]
-    pub last_seen: std::time::Instant,
-    #[serde(skip_serializing)]
-    pub first_seen: std::time::Instant,
+    pub last_seen: chrono::DateTime<chrono::Utc>,
+    pub first_seen: chrono::DateTime<chrono::Utc>,
 }
 
 #[derive(Default, Clone, Debug)]
@@ -56,12 +54,13 @@ impl<'a> State<'a> {
         let mut rng = rand::thread_rng();
         let id: usize = rng.gen();
 
+        let now = chrono::Utc::now();
         self.sessions.insert(
             id,
             Session {
                 tokens: vec![],
-                last_seen: std::time::Instant::now(),
-                first_seen: std::time::Instant::now(),
+                last_seen: now,
+                first_seen: now,
             },
         );
 
