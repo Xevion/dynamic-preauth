@@ -102,8 +102,12 @@ async fn handle_socket(session_id: usize, ws: WebSocket) {
         while let Some(result) = user_ws_rx.next().await {
             let msg = match result {
                 Ok(msg) => msg,
-                Err(_) => {
-                    // eprintln!("websocket error(uid={}): {}", my_id, e);
+                Err(error) => {
+                    tracing::error!(
+                        "WebSocket Error session_id={} error=({})",
+                        session_id,
+                        error
+                    );
                     break;
                 }
             };
@@ -156,7 +160,7 @@ pub async fn download(req: &mut Request, res: &mut Response, depot: &mut Depot) 
     let data = executable.with_key(session_id.to_string().as_bytes());
 
     if let Err(e) = res.write_body(data) {
-        eprintln!("Error writing body: {}", e);
+        tracing::error!("Error writing body: {}", e);
     }
 
     // TODO: Send the notify message via websocket
@@ -260,7 +264,7 @@ async fn main() {
         .allow_origin(&origin)
         .allow_methods(vec![Method::GET])
         .into_handler();
-    tracing::debug!("CORS Origin: {}", &origin);
+    tracing::debug!("CORS Allowed Origin: {}", &origin);
 
     let static_dir = StaticDir::new(["./public"]).defaults("index.html");
 
