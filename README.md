@@ -1,5 +1,8 @@
 # dynamic-preauth
 
+<!-- TODO: Add badges -->
+<!-- TODO: Add links to Railway deployment -->
+
 A proof of concept for server-side modification of executables for pre-authentication, built with Rust ([Salvo][salvo]).
 
 ## About
