@@ -17,7 +17,9 @@ const StatefulDemo = ({ class: className }: StatefulDemoProps) => {
   useEffect(() => {
     const socket = new WebSocket(
       (window.location.protocol === "https:" ? "wss://" : "ws://") +
-        window.location.host +
+        (import.meta.env.DEV != undefined
+          ? "localhost:5800"
+          : window.location.host) +
         "/ws"
     );
 
