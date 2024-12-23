@@ -9,7 +9,7 @@ interface Download {
 
 interface Executable {
   id: string;
-  name: string;
+  filename: string;
   size: number;
 }
 
@@ -23,7 +23,7 @@ interface UseSocketResult {
 function useSocket(): UseSocketResult {
   const [id, setId] = useState<string | null>(null);
   const [downloads, setDownloads] = useState<Download[] | null>(null);
-  const [executables, setExecutables] = useState<string | null>(null);
+  const [executables, setExecutables] = useState<Executable[] | null>(null);
 
   function deleteDownload() {}
 
@@ -48,6 +48,9 @@ function useSocket(): UseSocketResult {
           setId(data.session);
           setDownloads(downloads);
           break;
+        case "executables":
+          setExecutables(data.executables as Executable[]);
+          break;
         default:
           console.warn("Received unknown message type", data.type);
       }
@@ -63,7 +66,7 @@ function useSocket(): UseSocketResult {
     };
   }, []);
 
-  return { id, downloads, deleteDownload };
+  return { id, downloads, executables, deleteDownload };
 }
 
 export default useSocket;

@@ -169,4 +169,12 @@ pub enum OutgoingMessage {
     TokenAlert { token: u64 },
     // A message describing the current session state
     State { session: Session },
+    Executables { executables: Vec<ExecutableJson> },
+}
+
+#[derive(Debug, Serialize)]
+pub struct ExecutableJson {
+    pub id: String,
+    pub size: usize,
+    pub filename: String,
 }
