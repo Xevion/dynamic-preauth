@@ -69,7 +69,6 @@ const Demo = ({ class: className }: DemoProps) => {
             {download}
           </Badge>
         ))}
-        <Badge>download</Badge>
       </div>
       <div class="mt-4 p-2 bg-zinc-900/90 rounded-md border border-zinc-700">
         <p class="my-0">

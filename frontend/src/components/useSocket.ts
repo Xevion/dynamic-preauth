@@ -7,8 +7,15 @@ interface Download {
   download_time: string;
 }
 
+interface Executable {
+  id: string;
+  name: string;
+  size: number;
+}
+
 interface UseSocketResult {
   id: string | null;
+  executables: Executable[];
   downloads: Download[] | null;
   deleteDownload: (id: string) => void;
 }
@@ -16,6 +23,7 @@ interface UseSocketResult {
 function useSocket(): UseSocketResult {
   const [id, setId] = useState<string | null>(null);
   const [downloads, setDownloads] = useState<Download[] | null>(null);
+  const [executables, setExecutables] = useState<string | null>(null);
 
   function deleteDownload() {}
 
