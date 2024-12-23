@@ -14,6 +14,8 @@ multicompress() {
     if command -v brotli &>/dev/null; then
         brotli --best --force -o "$file.br" "$file"
     fi
+
+    # TODO: Add deflate
 }
 
 commas() {
