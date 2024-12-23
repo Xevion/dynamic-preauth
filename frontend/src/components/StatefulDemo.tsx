@@ -2,6 +2,7 @@ import Badge from "@/components/Badge";
 import Emboldened from "@/components/Emboldened";
 import { cn, plural, type ClassValue } from "@/util";
 import { useRef, useState } from "preact/hooks";
+import { useEffect } from "preact/hooks";
 
 type StatefulDemoProps = {
   class?: ClassValue;
@@ -13,6 +14,36 @@ type SessionData = {
 };
 
 const StatefulDemo = ({ class: className }: StatefulDemoProps) => {
+  useEffect(() => {
+    const socket = new WebSocket(
+      (window.location.protocol === "https:" ? "wss://" : "ws://") +
+        window.location.host +
+        "/ws"
+    );
+
+    socket.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+
+      if (data.type == undefined)
+        throw new Error("Received message without type");
+
+      switch (data.type) {
+        case "session":
+          setSession(data.session);
+          break;
+        default:
+          console.warn("Received unknown message type", data.type);
+      }
+    };
+
+    socket.onclose = () => {
+      console.log("WebSocket connection closed");
+    };
+
+    return () => {
+      socket.close();
+    };
+  }, []);
   const randomBits = (bits: number) =>
     Math.floor(Math.random() * 2 ** bits)
       .toString(16)
@@ -70,7 +101,7 @@ const StatefulDemo = ({ class: className }: StatefulDemoProps) => {
             onClick={function onClick() {
               highlight(i);
               const audio = new Audio("/notify.wav");
-              audio.volume = 0.3;
+              audio.volume = 0.5;
               audio.play();
             }}
           >
