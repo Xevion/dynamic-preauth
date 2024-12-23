@@ -17,12 +17,6 @@ const Demo = ({ class: className }: DemoProps) => {
   const { id, downloads } = useSocket();
   // TODO: Toasts
 
-  const randomBits = (bits: number) =>
-    Math.floor(Math.random() * 2 ** bits)
-      .toString(16)
-      .padStart(bits / 4, "0")
-      .toUpperCase();
-
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
   const highlightedTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 

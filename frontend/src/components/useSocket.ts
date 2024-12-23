@@ -8,16 +8,14 @@ interface Download {
 }
 
 interface UseSocketResult {
-  sessionId: string | null;
+  id: string | null;
   downloads: Download[] | null;
   deleteDownload: (id: string) => void;
 }
 
 function useSocket(): UseSocketResult {
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const [sessionDownloads, setSessionDownloads] = useState<Download[] | null>(
-    null
-  );
+  const [id, setId] = useState<string | null>(null);
+  const [downloads, setDownloads] = useState<Download[] | null>(null);
 
   function deleteDownload() {}
 
@@ -39,8 +37,8 @@ function useSocket(): UseSocketResult {
       switch (data.type) {
         case "state":
           const downloads = data.downloads as Download[];
-          setSessionId(data.session);
-          setSessionDownloads(downloads);
+          setId(data.session);
+          setDownloads(downloads);
           break;
         default:
           console.warn("Received unknown message type", data.type);
@@ -57,7 +55,7 @@ function useSocket(): UseSocketResult {
     };
   }, []);
 
-  return { sessionId, sessionDownloads, deleteDownload };
+  return { id, downloads, deleteDownload };
 }
 
 export default useSocket;
