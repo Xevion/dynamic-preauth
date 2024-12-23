@@ -1,8 +1,8 @@
-use rand::{distributions::Alphanumeric, Rng};
-use salvo::{http::cookie::Cookie, Response};
+use rand::Rng;
+use salvo::{http::cookie::Cookie, websocket::Message, Response};
 use serde::Serialize;
 use std::{collections::HashMap, path};
-use tokio::sync::Mutex;
+use tokio::sync::{mpsc::UnboundedSender, Mutex};
 
 use crate::utility::search;
 
@@ -11,6 +11,8 @@ pub struct Session {
     pub tokens: Vec<String>,
     pub last_seen: chrono::DateTime<chrono::Utc>,
     pub first_seen: chrono::DateTime<chrono::Utc>,
+    #[serde(skip_serializing)]
+    pub tx: Option<UnboundedSender<Result<Message, salvo::Error>>>,
 }
 
 #[derive(Default, Clone, Debug)]
@@ -61,6 +63,7 @@ impl<'a> State<'a> {
                 tokens: vec![],
                 last_seen: now,
                 first_seen: now,
+                tx: None,
             },
         );
 
