@@ -33,13 +33,21 @@ async fn session_middleware(req: &mut Request, res: &mut Response, depot: &mut D
                 Ok(session_id) => {
                     let mut store = STORE.lock().await;
                     if !store.sessions.contains_key(&session_id) {
-                        tracing::debug!("Session provided in cookie, but does not exist");
-                        let id = store.new_session(res).await;
-                        depot.insert("session_id", id);
+                        let new_session_id = store.new_session(res).await;
+                        depot.insert("session_id", new_session_id);
+                        tracing::debug!(
+                            existing_session_id = session_id,
+                            new_session_id = new_session_id,
+                            "Session provided in cookie, but does not exist"
+                        );
                     }
                 }
-                Err(_) => {
-                    tracing::debug!("Session provided in cookie, but is not a valid number");
+                Err(parse_error) => {
+                    tracing::debug!(
+                        invalid_session_id = cookie.value(),
+                        error = ?parse_error,
+                        "Session provided in cookie, but is not a valid number"
+                    );
                     let mut store = STORE.lock().await;
                     let id = store.new_session(res).await;
 
@@ -157,6 +165,7 @@ pub async fn download(req: &mut Request, res: &mut Response, depot: &mut Depot) 
 
     // Create a download for the session
     let session_download = session.add_download(executable);
+    tracing::info!(session_id, type = download_id, dl_token = session_download.token, "Download created");
     let data = executable.with_key(session_id.to_string().as_bytes());
 
     if let Err(e) = res.write_body(data) {
@@ -198,17 +207,22 @@ pub async fn get_session(req: &mut Request, res: &mut Response, depot: &mut Depo
     }
 }
 
-// Acquires the session id from the request, preferring the request Cookie
+// Acquires the session id from the request, preferring the depot
 fn get_session_id(req: &Request, depot: &Depot) -> Option<usize> {
+    if depot.contains_key("session_id") {
+        return Some(*depot.get::<usize>("session_id").unwrap());
+    }
+
+    // Otherwise, just use whatever the Cookie might have
     match req.cookie("Session") {
         Some(cookie) => match cookie.value().parse::<usize>() {
             Ok(id) => Some(id),
             _ => None,
         },
-        None => match depot.get::<usize>("session_id") {
-            Ok(id) => Some(*id),
-            _ => None,
-        },
+        None => {
+            tracing::warn!("Session was not provided in cookie or depot");
+            None
+        }
     }
 }
 

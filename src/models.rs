@@ -118,6 +118,9 @@ impl<'a> State<'a> {
 
         res.add_cookie(
             Cookie::build(("Session", id.to_string()))
+                .http_only(true)
+                .path("/")
+                .same_site(salvo::http::cookie::SameSite::Lax)
                 .permanent()
                 .build(),
         );
