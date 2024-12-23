@@ -204,6 +204,11 @@ async fn main() {
 
     let static_dir = StaticDir::new(["./public"]).defaults("index.html");
 
+    // TODO: Move handlers to a separate file
+    // TODO: Improved Token Generation
+    // TODO: Advanded HMAC Verification
+    // TODO: Session Purging
+
     let router = Router::new()
         .hoop(CatchPanic::new())
         .hoop(cors)

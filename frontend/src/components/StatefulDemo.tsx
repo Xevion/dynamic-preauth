@@ -46,6 +46,7 @@ const StatefulDemo = ({ class: className }: StatefulDemoProps) => {
       socket.close();
     };
   }, []);
+  // TODO: Toasts
   const randomBits = (bits: number) =>
     Math.floor(Math.random() * 2 ** bits)
       .toString(16)
