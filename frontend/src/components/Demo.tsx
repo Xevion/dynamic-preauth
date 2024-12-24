@@ -1,7 +1,7 @@
 import Badge from "@/components/Badge";
 import Emboldened from "@/components/Emboldened";
 import useSocket from "@/components/useSocket";
-import { cn, plural, type ClassValue } from "@/util";
+import { cn, plural, toHex, type ClassValue } from "@/util";
 import { useRef, useState } from "preact/hooks";
 
 type DemoProps = {
@@ -42,7 +42,7 @@ const Demo = ({ class: className }: DemoProps) => {
         <br />
         Your session is{" "}
         <Emboldened skeletonWidth="0x1234567890ABCDEF" copyable={true}>
-          {id != null ? "0x" + id?.toString(16).toUpperCase() : null}
+          {id != null ? toHex(id) : null}
         </Emboldened>
         . You have{" "}
         <Emboldened className="text-teal-400 font-inter">
@@ -66,7 +66,7 @@ const Demo = ({ class: className }: DemoProps) => {
               audio.play();
             }}
           >
-            {download}
+            {toHex(download.token)}
           </Badge>
         ))}
       </div>

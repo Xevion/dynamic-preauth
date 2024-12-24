@@ -1,4 +1,4 @@
-import { useEffect, useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 
 interface Download {
   token: number;
@@ -24,8 +24,23 @@ function useSocket(): UseSocketResult {
   const [id, setId] = useState<number | null>(null);
   const [downloads, setDownloads] = useState<Download[] | null>(null);
   const [executables, setExecutables] = useState<Executable[] | null>(null);
+  const socketRef = useRef<WebSocket | null>(null);
 
-  function deleteDownload() {}
+  function deleteDownload(download_token: number) {
+    if (socketRef.current == null) {
+      console.error("Socket is null");
+      return;
+    } else if (socketRef.current.readyState !== WebSocket.OPEN) {
+      console.error("Socket is not open", socketRef.current.readyState);
+      return;
+    }
+    socketRef.current.send(
+      JSON.stringify({
+        type: "delete",
+        token: download_token,
+      })
+    );
+  }
 
   useEffect(() => {
     const socket = new WebSocket(
@@ -33,6 +48,7 @@ function useSocket(): UseSocketResult {
         (import.meta.env.DEV ? "localhost:5800" : window.location.host) +
         "/ws"
     );
+    socketRef.current = socket;
 
     socket.onmessage = (event) => {
       const data = JSON.parse(event.data);
@@ -42,7 +58,7 @@ function useSocket(): UseSocketResult {
 
       switch (data.type) {
         case "state":
-          setId(data.id as number);
+          setId(data.session.id as number);
           setDownloads(data.session.downloads as Download[]);
           break;
         case "executables":

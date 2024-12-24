@@ -18,3 +18,7 @@ export function os(): Platform | "other" {
   else if (navigator.userAgent.includes("linux")) return "linux";
   return "other";
 }
+
+export function toHex(value: number): string {
+  return "0x" + value.toString(16).toUpperCase();
+}
