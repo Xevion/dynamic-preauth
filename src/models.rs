@@ -1,4 +1,3 @@
-use rand::Rng;
 use salvo::{http::cookie::Cookie, websocket::Message, Response};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, path};
@@ -12,7 +11,7 @@ pub struct Session {
     pub downloads: Vec<SessionDownload>,
 
     pub first_seen: chrono::DateTime<chrono::Utc>,
-    // The last time a request OR websocket message with this session was made
+    // The last time a request OR websocket message from/to this session was made
     pub last_seen: chrono::DateTime<chrono::Utc>,
     // The last time a request was made with this session
     pub last_request: chrono::DateTime<chrono::Utc>,
@@ -33,7 +32,6 @@ impl Session {
 
     // Add a download to the session
     pub fn add_download(&mut self, exe: &Executable) -> &SessionDownload {
-        let mut rng = rand::thread_rng();
         let token: u32 = rand::random();
 
         let download = SessionDownload {
@@ -127,8 +125,7 @@ impl<'a> State<'a> {
     }
 
     pub async fn new_session(&mut self, res: &mut Response) -> u32 {
-        let mut rng = rand::thread_rng();
-        let id: u32 = rng.gen();
+        let id: u32 = rand::random();
 
         let now = chrono::Utc::now();
         self.sessions.insert(

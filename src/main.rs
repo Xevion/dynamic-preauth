@@ -10,7 +10,7 @@ use salvo::prelude::{
     handler, CatchPanic, Listener, Request, Response, Router, Server, Service, StaticDir,
     TcpListener, WebSocketUpgrade,
 };
-use salvo::websocket::{Message, WebSocket};
+use salvo::websocket::WebSocket;
 use salvo::writing::Json;
 use salvo::Depot;
 use tokio::sync::{mpsc, Mutex};
@@ -40,6 +40,8 @@ async fn session_middleware(req: &mut Request, res: &mut Response, depot: &mut D
                             new_session_id = new_session_id,
                             "Session provided in cookie, but does not exist"
                         );
+                    } else {
+                        store.sessions.get_mut(&session_id).unwrap().seen(false);
                     }
                 }
                 Err(parse_error) => {
