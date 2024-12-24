@@ -51,21 +51,18 @@ impl Session {
         return self.downloads.last().unwrap();
     }
 
-    pub fn send_message(&mut self, message: OutgoingMessage) {
+    pub fn send_message(&mut self, message: OutgoingMessage) -> Result<(), anyhow::Error> {
         if self.tx.is_none() {
-            return;
+            return Err(anyhow::anyhow!("Session has no sender"));
         }
 
-        // TODO: Error handling, check tx exists
+        // TODO: Error handling
+        let tx = self.tx.as_ref().unwrap();
+        let result = tx.send(Ok(Message::text(serde_json::to_string(&message).unwrap())));
 
-        let result = self
-            .tx
-            .as_ref()
-            .unwrap()
-            .send(Ok(Message::text(serde_json::to_string(&message).unwrap())));
-
-        if let Err(e) = result {
-            tracing::error!("Failed to initial session state: {}", e);
+        match result {
+            Ok(_) => return Ok(()),
+            Err(e) => return Err(anyhow::anyhow!("Error sending message: {}", e)),
         }
     }
 

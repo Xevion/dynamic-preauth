@@ -85,6 +85,7 @@ async fn handle_socket(session_id: u32, websocket: WebSocket) {
     let (tx_channel, tx_channel_rx) = mpsc::unbounded_channel();
     let transmit = UnboundedReceiverStream::new(tx_channel_rx);
     let fut_handle_tx_buffer = transmit.forward(socket_tx).map(|result| {
+        tracing::debug!("WebSocket send result: {:?}", result);
         if let Err(e) = result {
             tracing::error!(error = ?e, "websocket send error");
         }
@@ -179,8 +180,6 @@ pub async fn download(req: &mut Request, res: &mut Response, depot: &mut Depot) 
         tracing::error!("Error writing body: {}", e);
     }
 
-    // TODO: Send the notify message via websocket
-
     res.headers.insert(
         "Content-Disposition",
         HeaderValue::from_str(
@@ -203,7 +202,7 @@ pub async fn download(req: &mut Request, res: &mut Response, depot: &mut Depot) 
 
 #[handler]
 pub async fn notify(req: &mut Request, res: &mut Response, depot: &mut Depot) {
-    let key = req.param::<String>("key");
+    let key = req.query::<String>("key");
 
     match key {
         Some(key) => {
@@ -224,8 +223,8 @@ pub async fn notify(req: &mut Request, res: &mut Response, depot: &mut Depot) {
             let message = OutgoingMessage::TokenAlert {
                 token: key.unwrap(),
             };
-
             session.send_message(message);
+
             res.render("Notification sent");
         }
         None => {
