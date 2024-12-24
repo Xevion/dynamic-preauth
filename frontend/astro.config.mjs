@@ -22,7 +22,7 @@ export default defineConfig({
       // xslURL: "/sitemap.xsl",
     }),
     preact({
-      devtools: import.meta.DEV ?? false,
+      devtools: import.meta.env.DEV ?? false,
     }),
   ],
 });
