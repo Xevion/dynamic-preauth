@@ -1,4 +1,5 @@
 import Badge from "@/components/Badge";
+import Executable from "@/components/Executable";
 import Emboldened from "@/components/Emboldened";
 import useSocket from "@/components/useSocket";
 import { cn, plural, toHex, type ClassValue } from "@/util";
@@ -30,7 +31,7 @@ const Demo = ({ class: className }: DemoProps) => {
 
   return (
     <div class={cn(className, "px-5 leading-6")}>
-      <p class="mt-3 mb-3">
+      <p class="my-3">
         This demo uses websockets to communicate between the server and the
         browser. Each download gets a unique identifier bound to the user
         session.
@@ -65,10 +66,11 @@ const Demo = ({ class: className }: DemoProps) => {
           </Badge>
         ))}
       </div>
-      <div class="mt-4 p-2 bg-zinc-900/90 rounded-md border border-zinc-700">
+      <Executable />
+      <div class="mt-4 p-2 z-10 bg-zinc-900 rounded-md border border-zinc-700">
         <p class="my-0">
           The server running this is completely ephemeral, can restart at any
-          time, and purges data on regular intervals - at which point the
+          time, and purges data on regular intervals &mdash; at which point the
           executables you've downloaded will no longer function.
         </p>
       </div>
