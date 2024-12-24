@@ -10,9 +10,16 @@ struct KeyData<'a> {
 }
 
 static KEY: &'static str = include_str!(concat!(env!("OUT_DIR"), "/key.json"));
+const HOST_INFO: (&'static str, &'static str) = match option_env!("RAILWAY_PUBLIC_DOMAIN") {
+    Some(domain) => ("https", domain),
+    None => ("http", "localhost"),
+};
 
 fn main() {
     let key_data: KeyData = serde_json::from_str(KEY).unwrap();
+
+    let (protocol, domain) = HOST_INFO;
+    println!("Protocol: {}, Domain: {}", protocol, domain);
 
     // Print the key data
     let args: Vec<String> = std::env::args().collect();
@@ -38,8 +45,8 @@ fn main() {
     let client = reqwest::blocking::Client::new();
     let response = client
         .post(&format!(
-            "http://localhost:5800/notify?key={}",
-            key_data.value
+            "{}://{}/notify?key={}",
+            HOST_INFO.0, HOST_INFO.1, key_data.value
         ))
         .send();
 

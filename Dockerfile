@@ -3,7 +3,7 @@ FROM rust:latest AS builder-demo
 
 WORKDIR /build/demo
 RUN apt update && apt install -y g++-mingw-w64-x86-64
-
+ARG RAILWAY_PUBLIC_DOMAIN
 
 RUN rustup target add x86_64-pc-windows-gnu
 RUN rustup target add x86_64-unknown-linux-gnu
