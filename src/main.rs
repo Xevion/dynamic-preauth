@@ -203,7 +203,7 @@ pub async fn download(req: &mut Request, res: &mut Response, depot: &mut Depot) 
 }
 
 #[handler]
-pub async fn notify(req: &mut Request, res: &mut Response, depot: &mut Depot) {
+pub async fn notify(req: &mut Request, res: &mut Response) {
     let key = req.query::<String>("key");
 
     match key {
@@ -219,14 +219,23 @@ pub async fn notify(req: &mut Request, res: &mut Response, depot: &mut Depot) {
             };
 
             let store = &mut *STORE.lock().await;
-            let session = store.sessions.get_mut(&key).expect("Session not found");
+            let session = store.sessions.get_mut(&key);
 
-            let message = OutgoingMessage::TokenAlert { token: key };
-            session
-                .send_message(message)
-                .expect("Failed to buffer token alert message");
+            match session {
+                Some(session) => {
+                    let message = OutgoingMessage::TokenAlert { token: key };
+                    session
+                        .send_message(message)
+                        .expect("Failed to buffer token alert message");
 
-            res.render("Notification sent");
+                    res.render("Notification sent");
+                }
+                None => {
+                    tracing::warn!("Session not found for key while attempting notify: {}", key);
+                    res.status_code(StatusCode::UNAUTHORIZED);
+                    return;
+                }
+            }
         }
         None => {
             res.status_code(StatusCode::BAD_REQUEST);
@@ -337,12 +346,18 @@ async fn main() {
     let router = Router::new()
         .hoop(CatchPanic::new())
         .hoop(cors)
-        .hoop(session_middleware)
-        .push(Router::with_path("download/<id>").get(download))
-        .push(Router::with_path("session").get(get_session))
-        .push(Router::with_path("ws").goal(connect))
+        // /notify does not need a session, nor should it have one
         .push(Router::with_path("notify").post(notify))
-        .push(Router::with_path("<**path>").get(static_dir));
+        .push(
+            Router::new()
+                .hoop(session_middleware)
+                .push(Router::with_path("download/<id>").get(download))
+                .push(Router::with_path("session").get(get_session))
+                // websocket /ws
+                .push(Router::with_path("ws").goal(connect))
+                // static files
+                .push(Router::with_path("<**path>").get(static_dir)),
+        );
 
     let service = Service::new(router).hoop(Logger::new());
 
