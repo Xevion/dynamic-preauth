@@ -94,15 +94,16 @@ impl<'a> State<'a> {
         let key_start = search(&data, pattern.as_bytes(), 0).unwrap();
         let key_end = key_start + pattern.len();
 
-        let filename = path::Path::new(&exe_path);
-        let name = filename.file_stem().unwrap().to_str().unwrap();
-        let extension = match filename.extension() {
+        let path = path::Path::new(&exe_path);
+        let name = path.file_stem().unwrap().to_str().unwrap();
+        let extension = match path.extension() {
             Some(s) => s.to_str().unwrap(),
             None => "",
         };
 
         let exe = Executable {
             data,
+            filename: path.file_name().unwrap().to_str().unwrap().to_string(),
             name: name.to_string(),
             extension: extension.to_string(),
             key_start: key_start,
@@ -141,11 +142,26 @@ impl<'a> State<'a> {
 
         return id;
     }
+
+    pub fn executable_json(&self) -> Vec<ExecutableJson> {
+        let mut executables = Vec::new();
+
+        for (key, exe) in &self.executables {
+            executables.push(ExecutableJson {
+                id: key.to_string(),
+                size: exe.data.len(),
+                filename: exe.filename.clone(),
+            });
+        }
+
+        return executables;
+    }
 }
 
 #[derive(Default, Clone, Debug)]
 pub struct Executable {
-    pub data: Vec<u8>,     // the raw data of the executable
+    pub data: Vec<u8>, // the raw data of the executable
+    pub filename: String,
     pub name: String,      // the name before the extension
     pub extension: String, // may be empty string
     pub key_start: usize,  // the index of the byte where the key starts

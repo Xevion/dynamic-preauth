@@ -89,7 +89,13 @@ async fn handle_socket(session_id: usize, websocket: WebSocket) {
     });
     tokio::task::spawn(fut_handle_tx_buffer);
 
-    let mut store = STORE.lock().await;
+    let store = &mut *STORE.lock().await;
+
+    // Create the executable message first, borrow issues
+    let executable_message = OutgoingMessage::Executables {
+        executables: store.executable_json(),
+    };
+
     let session = store
         .sessions
         .get_mut(&session_id)
@@ -100,7 +106,7 @@ async fn handle_socket(session_id: usize, websocket: WebSocket) {
         id: session_id,
         session: session.clone(),
     });
-    drop(store);
+    session.send_message(executable_message);
 
     // Handle incoming messages
     let fut = async move {
