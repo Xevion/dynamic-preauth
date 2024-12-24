@@ -41,7 +41,7 @@ const Demo = ({ class: className }: DemoProps) => {
         session.
         <br />
         Your session is{" "}
-        <Emboldened skeletonWidth="0x1234567890ABCDEF" copyable={true}>
+        <Emboldened skeletonWidth="0x12345678" copyable={true}>
           {id != null ? toHex(id) : null}
         </Emboldened>
         . You have{" "}

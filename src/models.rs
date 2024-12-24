@@ -8,7 +8,7 @@ use crate::utility::search;
 
 #[derive(Debug, Serialize, Clone)]
 pub struct Session {
-    pub id: usize,
+    pub id: u32,
     pub downloads: Vec<SessionDownload>,
 
     pub first_seen: chrono::DateTime<chrono::Utc>,
@@ -89,7 +89,7 @@ pub struct State<'a> {
     // A map of executables, keyed by their type/platform
     pub executables: HashMap<&'a str, Executable>,
     // A map of sessions, keyed by their identifier (a random number)
-    pub sessions: HashMap<usize, Session>,
+    pub sessions: HashMap<u32, Session>,
 }
 
 impl<'a> State<'a> {
@@ -126,9 +126,9 @@ impl<'a> State<'a> {
         self.executables.insert(exe_type, exe);
     }
 
-    pub async fn new_session(&mut self, res: &mut Response) -> usize {
+    pub async fn new_session(&mut self, res: &mut Response) -> u32 {
         let mut rng = rand::thread_rng();
-        let id: usize = rng.gen();
+        let id: u32 = rng.gen();
 
         let now = chrono::Utc::now();
         self.sessions.insert(

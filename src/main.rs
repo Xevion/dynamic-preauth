@@ -29,7 +29,7 @@ async fn session_middleware(req: &mut Request, res: &mut Response, depot: &mut D
     match req.cookie("Session") {
         Some(cookie) => {
             // Check if the session exists
-            match cookie.value().parse::<usize>() {
+            match cookie.value().parse::<u32>() {
                 Ok(session_id) => {
                     let mut store = STORE.lock().await;
                     if !store.sessions.contains_key(&session_id) {
@@ -75,7 +75,7 @@ async fn connect(req: &mut Request, res: &mut Response, depot: &Depot) -> Result
         .await
 }
 
-async fn handle_socket(session_id: usize, websocket: WebSocket) {
+async fn handle_socket(session_id: u32, websocket: WebSocket) {
     // Split the socket into a sender and receive of messages.
     let (socket_tx, mut socket_rx) = websocket.split();
 
@@ -220,14 +220,14 @@ pub async fn get_session(req: &mut Request, res: &mut Response, depot: &mut Depo
 }
 
 // Acquires the session id from the request, preferring the depot
-fn get_session_id(req: &Request, depot: &Depot) -> Option<usize> {
+fn get_session_id(req: &Request, depot: &Depot) -> Option<u32> {
     if depot.contains_key("session_id") {
-        return Some(*depot.get::<usize>("session_id").unwrap());
+        return Some(*depot.get::<u32>("session_id").unwrap());
     }
 
     // Otherwise, just use whatever the Cookie might have
     match req.cookie("Session") {
-        Some(cookie) => match cookie.value().parse::<usize>() {
+        Some(cookie) => match cookie.value().parse::<u32>() {
             Ok(id) => Some(id),
             _ => None,
         },
