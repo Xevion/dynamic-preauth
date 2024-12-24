@@ -42,7 +42,7 @@ const Demo = ({ class: className }: DemoProps) => {
         <br />
         Your session is{" "}
         <Emboldened skeletonWidth="0x12345678" copyable={true}>
-          {id}
+          {"0x" + id?.toString(16).toUpperCase()}
         </Emboldened>
         . You have{" "}
         <Emboldened className="text-teal-400 font-inter">

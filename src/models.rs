@@ -45,6 +45,20 @@ impl Session {
         self.downloads.push(download);
         return self.downloads.last().unwrap();
     }
+
+    pub fn send_message(&mut self, message: OutgoingMessage) {
+        // TODO: Error handling, check tx exists
+
+        let result = self
+            .tx
+            .as_ref()
+            .unwrap()
+            .send(Ok(Message::text(serde_json::to_string(&message).unwrap())));
+
+        if let Err(e) = result {
+            tracing::error!("Failed to initial session state: {}", e);
+        }
+    }
 }
 
 #[derive(Serialize, Debug, Clone)]
@@ -166,12 +180,12 @@ pub enum IncomingMessage {
 }
 
 #[derive(Debug, Serialize)]
-#[serde(tag = "type")]
+#[serde(tag = "type", rename_all = "lowercase")]
 pub enum OutgoingMessage {
     // An alert to the client that a session download has been used.
     TokenAlert { token: u64 },
     // A message describing the current session state
-    State { session: Session },
+    State { session: Session, id: usize },
     Executables { executables: Vec<ExecutableJson> },
 }
 

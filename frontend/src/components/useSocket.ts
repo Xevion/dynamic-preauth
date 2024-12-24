@@ -14,14 +14,14 @@ interface Executable {
 }
 
 interface UseSocketResult {
-  id: string | null;
+  id: number | null;
   executables: Executable[];
   downloads: Download[] | null;
   deleteDownload: (id: string) => void;
 }
 
 function useSocket(): UseSocketResult {
-  const [id, setId] = useState<string | null>(null);
+  const [id, setId] = useState<number | null>(null);
   const [downloads, setDownloads] = useState<Download[] | null>(null);
   const [executables, setExecutables] = useState<Executable[] | null>(null);
 
@@ -44,9 +44,8 @@ function useSocket(): UseSocketResult {
 
       switch (data.type) {
         case "state":
-          const downloads = data.downloads as Download[];
-          setId(data.session);
-          setDownloads(downloads);
+          setId(data.id as number);
+          setDownloads(data.session.downloads as Download[]);
           break;
         case "executables":
           setExecutables(data.executables as Executable[]);
@@ -56,12 +55,13 @@ function useSocket(): UseSocketResult {
       }
     };
 
-    socket.onclose = () => {
-      console.log("WebSocket connection closed");
+    socket.onclose = (event) => {
+      console.log("WebSocket connection closed", event);
     };
 
     return () => {
       // Close the socket when the component is unmounted
+      console.log("Unmounting, closing WebSocket connection");
       socket.close();
     };
   }, []);

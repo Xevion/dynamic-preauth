@@ -2,7 +2,7 @@ use std::env;
 use std::sync::LazyLock;
 
 use futures_util::{FutureExt, StreamExt};
-use models::IncomingMessage;
+use models::{IncomingMessage, OutgoingMessage};
 use salvo::cors::Cors;
 use salvo::http::{HeaderValue, Method, StatusCode, StatusError};
 use salvo::logging::Logger;
@@ -10,7 +10,7 @@ use salvo::prelude::{
     handler, CatchPanic, Listener, Request, Response, Router, Server, Service, StaticDir,
     TcpListener, WebSocketUpgrade,
 };
-use salvo::websocket::WebSocket;
+use salvo::websocket::{Message, WebSocket};
 use salvo::writing::Json;
 use salvo::Depot;
 use tokio::sync::{mpsc, Mutex};
@@ -75,39 +75,41 @@ async fn connect(req: &mut Request, res: &mut Response, depot: &Depot) -> Result
         .await
 }
 
-async fn handle_socket(session_id: usize, ws: WebSocket) {
+async fn handle_socket(session_id: usize, websocket: WebSocket) {
     // Split the socket into a sender and receive of messages.
-    let (user_ws_tx, mut user_ws_rx) = ws.split();
+    let (socket_tx, mut socket_rx) = websocket.split();
 
-    // Use an unbounded channel to handle buffering and flushing of messages
-    // to the websocket...
-    let (tx, rx) = mpsc::unbounded_channel();
-    let rx = UnboundedReceiverStream::new(rx);
-    let fut = rx.forward(user_ws_tx).map(|result| {
+    // Use an unbounded channel to handle buffering and flushing of messages to the websocket...
+    let (tx_channel, tx_channel_rx) = mpsc::unbounded_channel();
+    let transmit = UnboundedReceiverStream::new(tx_channel_rx);
+    let fut_handle_tx_buffer = transmit.forward(socket_tx).map(|result| {
         if let Err(e) = result {
             tracing::error!(error = ?e, "websocket send error");
         }
     });
-    tokio::task::spawn(fut);
+    tokio::task::spawn(fut_handle_tx_buffer);
+
+    let mut store = STORE.lock().await;
+    let session = store
+        .sessions
+        .get_mut(&session_id)
+        .expect("Unable to get session");
+    session.tx = Some(tx_channel);
+
+    session.send_message(OutgoingMessage::State {
+        id: session_id,
+        session: session.clone(),
+    });
+    drop(store);
 
     // Handle incoming messages
     let fut = async move {
-        let mut store = STORE.lock().await;
-        // let session = store
-        //     .sessions
-        //     .get_mut(&session_id)
-        //     .expect("Unable to get session");
-        // tx.send(Ok(Message::ping("1")))
-        // .expect("Unable to send message");
-        // session.tx = Some(tx);
-        drop(store);
-
         tracing::info!(
             "WebSocket connection established for session_id: {}",
             session_id
         );
 
-        while let Some(result) = user_ws_rx.next().await {
+        while let Some(result) = socket_rx.next().await {
             let msg = match result {
                 Ok(msg) => msg,
                 Err(error) => {
