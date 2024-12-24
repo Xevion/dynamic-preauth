@@ -51,9 +51,10 @@ impl Session {
         return self.downloads.last().unwrap();
     }
 
+    // This function's failure is not a failure to transmit the message, but a failure to buffer it into the channel (or any preceding steps).
     pub fn send_message(&mut self, message: OutgoingMessage) -> Result<(), anyhow::Error> {
         if self.tx.is_none() {
-            return Err(anyhow::anyhow!("Session has no sender"));
+            return Err(anyhow::anyhow!("Session {} has no sender", self.id));
         }
 
         // TODO: Error handling
@@ -210,13 +211,20 @@ pub enum IncomingMessage {
 }
 
 #[derive(Debug, Serialize)]
-#[serde(tag = "type", rename_all = "lowercase")]
+#[serde(tag = "type", rename_all = "kebab-case")]
 pub enum OutgoingMessage {
     // An alert to the client that a session download has been used.
-    TokenAlert { token: u32 },
+    #[serde(rename = "notify")]
+    TokenAlert {
+        token: u32,
+    },
     // A message describing the current session state
-    State { session: Session },
-    Executables { executables: Vec<ExecutableJson> },
+    State {
+        session: Session,
+    },
+    Executables {
+        executables: Vec<ExecutableJson>,
+    },
 }
 
 #[derive(Debug, Serialize)]

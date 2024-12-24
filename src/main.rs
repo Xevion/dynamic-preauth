@@ -106,7 +106,9 @@ async fn handle_socket(session_id: u32, websocket: WebSocket) {
     session.tx = Some(tx_channel);
 
     session.send_state();
-    session.send_message(executable_message);
+    session
+        .send_message(executable_message)
+        .expect("Failed to buffer executables message");
 
     // Handle incoming messages
     let fut = async move {
@@ -207,23 +209,22 @@ pub async fn notify(req: &mut Request, res: &mut Response, depot: &mut Depot) {
     match key {
         Some(key) => {
             // Parse key into u32
-            let key = key.parse::<u32>();
-            if key.is_err() {
-                res.status_code(StatusCode::BAD_REQUEST);
-                return;
-            }
+            let key = match key.parse::<u32>() {
+                Ok(k) => k,
+                Err(e) => {
+                    tracing::error!("Error parsing key: {}", e);
+                    res.status_code(StatusCode::BAD_REQUEST);
+                    return;
+                }
+            };
 
             let store = &mut *STORE.lock().await;
-            let session_id = get_session_id(req, depot).unwrap();
-            let session = store
-                .sessions
-                .get_mut(&session_id)
-                .expect("Session not found");
+            let session = store.sessions.get_mut(&key).expect("Session not found");
 
-            let message = OutgoingMessage::TokenAlert {
-                token: key.unwrap(),
-            };
-            session.send_message(message);
+            let message = OutgoingMessage::TokenAlert { token: key };
+            session
+                .send_message(message)
+                .expect("Failed to buffer token alert message");
 
             res.render("Notification sent");
         }
