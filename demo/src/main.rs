@@ -12,14 +12,11 @@ struct KeyData<'a> {
 static KEY: &'static str = include_str!(concat!(env!("OUT_DIR"), "/key.json"));
 const HOST_INFO: (&'static str, &'static str) = match option_env!("RAILWAY_PUBLIC_DOMAIN") {
     Some(domain) => ("https", domain),
-    None => ("http", "localhost"),
+    None => ("http", "localhost:5800"),
 };
 
 fn main() {
     let key_data: KeyData = serde_json::from_str(KEY).unwrap();
-
-    let (protocol, domain) = HOST_INFO;
-    println!("Protocol: {}, Domain: {}", protocol, domain);
 
     // Print the key data
     let args: Vec<String> = std::env::args().collect();
@@ -37,16 +34,42 @@ fn main() {
     let value_hash = sha2::Sha256::digest(key_data.value.as_bytes());
     let hash_match = hex::encode(value_hash) == key_data.value_hash;
 
-    // if hash_match {
-    //     return;
-    // }
+    if hash_match {
+        eprintln!("Value has not been changed since build");
 
-    // TODO: Use token to make request
+        // Only fail immediately if built in Railway CI
+        if option_env!("RAILWAY_PUBLIC_DOMAIN").is_some() {
+            return;
+        }
+    }
+
+    let mut token = key_data.value.trim().parse::<u32>();
+
+    if let Some(forced_token) = option_env!("FORCED_TOKEN") {
+        token = forced_token.parse::<u32>();
+    }
+
+    match token {
+        Ok(token) => {
+            println!("Token: {:08X}", token);
+            request(token);
+        }
+        Err(e) => {
+            eprintln!("Token was changed, but is not a valid u32 integer: {}", e);
+            eprintln!("Original Value: {}", key_data.value);
+            return;
+        }
+    }
+
+    println!("Hash match: {}", hash_match);
+}
+
+fn request(token: u32) {
     let client = reqwest::blocking::Client::new();
     let response = client
         .post(&format!(
-            "{}://{}/notify?key={}",
-            HOST_INFO.0, HOST_INFO.1, key_data.value
+            "{}://{}/notify?key=0x{:08X}",
+            HOST_INFO.0, HOST_INFO.1, token
         ))
         .send();
 
@@ -75,8 +98,9 @@ fn main() {
                         }
                     }
                 } else {
+                    println!("Request URL: {}", resp.url());
                     println!(
-                        "Response body: {}",
+                        "Response body: \n{}",
                         resp.text()
                             .unwrap_or_else(|_| "Failed to read response body".to_string())
                     );
@@ -87,6 +111,4 @@ fn main() {
             println!("Request error: {}", e);
         }
     }
-
-    println!("Hash match: {}", hash_match);
 }
