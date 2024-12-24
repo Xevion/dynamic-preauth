@@ -202,6 +202,39 @@ pub async fn download(req: &mut Request, res: &mut Response, depot: &mut Depot) 
 }
 
 #[handler]
+pub async fn notify(req: &mut Request, res: &mut Response, depot: &mut Depot) {
+    let key = req.param::<String>("key");
+
+    match key {
+        Some(key) => {
+            // Parse key into u32
+            let key = key.parse::<u32>();
+            if key.is_err() {
+                res.status_code(StatusCode::BAD_REQUEST);
+                return;
+            }
+
+            let store = &mut *STORE.lock().await;
+            let session_id = get_session_id(req, depot).unwrap();
+            let session = store
+                .sessions
+                .get_mut(&session_id)
+                .expect("Session not found");
+
+            let message = OutgoingMessage::TokenAlert {
+                token: key.unwrap(),
+            };
+
+            session.send_message(message);
+            res.render("Notification sent");
+        }
+        None => {
+            res.status_code(StatusCode::BAD_REQUEST);
+        }
+    }
+}
+
+#[handler]
 pub async fn get_session(req: &mut Request, res: &mut Response, depot: &mut Depot) {
     let store = STORE.lock().await;
 
@@ -271,7 +304,7 @@ async fn main() {
 
     // Add the executables to the store
     let mut store = STORE.lock().await;
-    store.add_executable("windows", "./demo-windows.exe");
+    store.add_executable("windows", "./demo.exe");
     store.add_executable("linux", "./demo-linux");
     drop(store); // critical: Drop the lock to avoid deadlock, otherwise the server will hang
 
@@ -308,6 +341,7 @@ async fn main() {
         .push(Router::with_path("download/<id>").get(download))
         .push(Router::with_path("session").get(get_session))
         .push(Router::with_path("ws").goal(connect))
+        .push(Router::with_path("notify").post(notify))
         .push(Router::with_path("<**path>").get(static_dir));
 
     let service = Service::new(router).hoop(Logger::new());

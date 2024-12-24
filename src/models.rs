@@ -36,7 +36,13 @@ impl Session {
 
         let download = SessionDownload {
             token,
-            filename: format!("{}-{:16x}{}", exe.name, token, exe.extension),
+            filename: format!(
+                "{}-{:08x}{}{}",
+                exe.name,
+                token,
+                if exe.extension.len() > 0 { "." } else { "" },
+                exe.extension
+            ),
             last_used: chrono::Utc::now(),
             download_time: chrono::Utc::now(),
         };
@@ -203,14 +209,14 @@ impl Executable {
 #[serde(tag = "type")]
 pub enum IncomingMessage {
     // A request from the client to delete a session token
-    DeleteSessionToken { id: u64 },
+    DeleteSessionToken { id: u32 },
 }
 
 #[derive(Debug, Serialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum OutgoingMessage {
     // An alert to the client that a session download has been used.
-    TokenAlert { token: u64 },
+    TokenAlert { token: u32 },
     // A message describing the current session state
     State { session: Session },
     Executables { executables: Vec<ExecutableJson> },
