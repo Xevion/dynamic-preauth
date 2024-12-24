@@ -15,7 +15,7 @@ interface Executable {
 
 interface UseSocketResult {
   id: number | null;
-  executables: Executable[];
+  executables: Executable[] | null;
   downloads: Download[] | null;
   deleteDownload: (id: string) => void;
 }
