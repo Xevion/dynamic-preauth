@@ -8,11 +8,6 @@ type DemoProps = {
   class?: ClassValue;
 };
 
-type SessionData = {
-  id: string;
-  downloads: string[];
-};
-
 const Demo = ({ class: className }: DemoProps) => {
   const { id, downloads } = useSocket();
   // TODO: Toasts

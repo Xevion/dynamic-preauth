@@ -17,7 +17,7 @@ interface UseSocketResult {
   id: number | null;
   executables: Executable[] | null;
   downloads: Download[] | null;
-  deleteDownload: (id: string) => void;
+  deleteDownload: (id: number) => void;
 }
 
 function useSocket(): UseSocketResult {
