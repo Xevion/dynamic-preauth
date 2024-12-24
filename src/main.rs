@@ -102,10 +102,7 @@ async fn handle_socket(session_id: usize, websocket: WebSocket) {
         .expect("Unable to get session");
     session.tx = Some(tx_channel);
 
-    session.send_message(OutgoingMessage::State {
-        id: session_id,
-        session: session.clone(),
-    });
+    session.send_state();
     session.send_message(executable_message);
 
     // Handle incoming messages
@@ -193,6 +190,13 @@ pub async fn download(req: &mut Request, res: &mut Response, depot: &mut Depot) 
         "Content-Type",
         HeaderValue::from_static("application/octet-stream"),
     );
+
+    // Don't try to send state if somehow the session has not connected
+    if session.tx.is_some() {
+        session.send_state();
+    } else {
+        tracing::warn!("Download being made without any connection websocket");
+    }
 }
 
 #[handler]

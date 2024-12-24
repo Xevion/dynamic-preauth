@@ -8,6 +8,7 @@ use crate::utility::search;
 
 #[derive(Debug, Serialize, Clone)]
 pub struct Session {
+    pub id: usize,
     pub downloads: Vec<SessionDownload>,
 
     pub first_seen: chrono::DateTime<chrono::Utc>,
@@ -33,7 +34,7 @@ impl Session {
     // Add a download to the session
     pub fn add_download(&mut self, exe: &Executable) -> &SessionDownload {
         let mut rng = rand::thread_rng();
-        let token: u64 = rng.gen();
+        let token: u32 = rand::random();
 
         let download = SessionDownload {
             token,
@@ -47,6 +48,10 @@ impl Session {
     }
 
     pub fn send_message(&mut self, message: OutgoingMessage) {
+        if self.tx.is_none() {
+            return;
+        }
+
         // TODO: Error handling, check tx exists
 
         let result = self
@@ -59,11 +64,19 @@ impl Session {
             tracing::error!("Failed to initial session state: {}", e);
         }
     }
+
+    pub fn send_state(&mut self) {
+        let message = OutgoingMessage::State {
+            session: self.clone(),
+        };
+
+        self.send_message(message);
+    }
 }
 
 #[derive(Serialize, Debug, Clone)]
 pub struct SessionDownload {
-    pub token: u64,
+    pub token: u32,
     pub filename: String,
     pub last_used: chrono::DateTime<chrono::Utc>,
     pub download_time: chrono::DateTime<chrono::Utc>,
@@ -121,6 +134,7 @@ impl<'a> State<'a> {
         self.sessions.insert(
             id,
             Session {
+                id,
                 downloads: Vec::new(),
                 last_seen: now,
                 last_request: now,
@@ -201,7 +215,7 @@ pub enum OutgoingMessage {
     // An alert to the client that a session download has been used.
     TokenAlert { token: u64 },
     // A message describing the current session state
-    State { session: Session, id: usize },
+    State { session: Session },
     Executables { executables: Vec<ExecutableJson> },
 }
 
