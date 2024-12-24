@@ -30,9 +30,7 @@ function useSocket(): UseSocketResult {
   useEffect(() => {
     const socket = new WebSocket(
       (window.location.protocol === "https:" ? "wss://" : "ws://") +
-        (import.meta.env.DEV != undefined
-          ? "localhost:5800"
-          : window.location.host) +
+        (import.meta.env.DEV ? "localhost:5800" : window.location.host) +
         "/ws"
     );
 

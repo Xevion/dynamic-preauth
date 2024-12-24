@@ -41,8 +41,8 @@ const Demo = ({ class: className }: DemoProps) => {
         session.
         <br />
         Your session is{" "}
-        <Emboldened skeletonWidth="0x12345678" copyable={true}>
-          {"0x" + id?.toString(16).toUpperCase()}
+        <Emboldened skeletonWidth="0x1234567890ABCDEF" copyable={true}>
+          {id != null ? "0x" + id?.toString(16).toUpperCase() : null}
         </Emboldened>
         . You have{" "}
         <Emboldened className="text-teal-400 font-inter">

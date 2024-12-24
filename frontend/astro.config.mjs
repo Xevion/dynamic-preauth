@@ -4,14 +4,16 @@ import tailwind from "@astrojs/tailwind";
 import sitemap from "@astrojs/sitemap";
 import preact from "@astrojs/preact";
 
+// TODO: Add linting to build steps
+
 // https://astro.build/config
 export default defineConfig({
   build: {
     assets: "assets",
   },
-  site: process.env.DEV
+  site: import.meta.env.DEV
     ? "https://localhost:4321"
-    : `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`,
+    : `https://${import.meta.env.RAILWAY_PUBLIC_DOMAIN}`,
   integrations: [
     tailwind(),
     sitemap({
@@ -20,7 +22,7 @@ export default defineConfig({
       // xslURL: "/sitemap.xsl",
     }),
     preact({
-      devtools: process.env.DEV != undefined ? true : false,
+      devtools: import.meta.DEV ?? false,
     }),
   ],
 });
