@@ -26,11 +26,60 @@ fn main() {
         return;
     }
 
-    // TODO: Use token to make request
-
     // Check the hash of the value
     let value_hash = sha2::Sha256::digest(key_data.value.as_bytes());
     let hash_match = hex::encode(value_hash) == key_data.value_hash;
+
+    // if hash_match {
+    //     return;
+    // }
+
+    // TODO: Use token to make request
+    let client = reqwest::blocking::Client::new();
+    let response = client
+        .post(&format!(
+            "http://localhost:5800/notify?key={}",
+            key_data.value
+        ))
+        .send();
+
+    match response {
+        Ok(resp) => {
+            if resp.status().is_success() {
+                println!("Request successful");
+            } else {
+                println!("Request failed with status: {}", resp.status());
+
+                if resp
+                    .headers()
+                    .get(reqwest::header::CONTENT_TYPE)
+                    .map(|v| v == "application/json")
+                    .unwrap_or(false)
+                {
+                    match resp.json::<serde_json::Value>() {
+                        Ok(json_body) => {
+                            println!(
+                                "Response JSON: {}",
+                                serde_json::to_string_pretty(&json_body).unwrap()
+                            );
+                        }
+                        Err(e) => {
+                            println!("Failed to parse JSON response: {}", e);
+                        }
+                    }
+                } else {
+                    println!(
+                        "Response body: {}",
+                        resp.text()
+                            .unwrap_or_else(|_| "Failed to read response body".to_string())
+                    );
+                }
+            }
+        }
+        Err(e) => {
+            println!("Request error: {}", e);
+        }
+    }
 
     println!("Hash match: {}", hash_match);
 }
