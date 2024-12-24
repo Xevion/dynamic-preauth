@@ -67,12 +67,12 @@ impl Session {
         }
     }
 
-    pub fn send_state(&mut self) {
+    pub fn send_state(&mut self) -> Result<(), anyhow::Error> {
         let message = OutgoingMessage::State {
             session: self.clone(),
         };
 
-        self.send_message(message);
+        self.send_message(message)
     }
 }
 

@@ -105,7 +105,9 @@ async fn handle_socket(session_id: u32, websocket: WebSocket) {
         .expect("Unable to get session");
     session.tx = Some(tx_channel);
 
-    session.send_state();
+    session
+        .send_state()
+        .expect("Failed to buffer state message");
     session
         .send_message(executable_message)
         .expect("Failed to buffer executables message");
@@ -196,7 +198,9 @@ pub async fn download(req: &mut Request, res: &mut Response, depot: &mut Depot) 
 
     // Don't try to send state if somehow the session has not connected
     if session.tx.is_some() {
-        session.send_state();
+        session
+            .send_state()
+            .expect("Failed to buffer state message");
     } else {
         tracing::warn!("Download being made without any connection websocket");
     }
