@@ -25,6 +25,7 @@ function useSocket(): UseSocketResult {
   const [downloads, setDownloads] = useState<Download[] | null>(null);
   const [executables, setExecutables] = useState<Executable[] | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
+  const allowReconnectRef = useRef<boolean>(true);
 
   function deleteDownload(download_token: number) {
     if (socketRef.current == null) {
@@ -43,40 +44,56 @@ function useSocket(): UseSocketResult {
   }
 
   useEffect(() => {
-    const socket = new WebSocket(
-      (window.location.protocol === "https:" ? "wss://" : "ws://") +
-        (import.meta.env.DEV ? "localhost:5800" : window.location.host) +
-        "/ws"
-    );
-    socketRef.current = socket;
+    function connect() {
+      const socket = new WebSocket(
+        (window.location.protocol === "https:" ? "wss://" : "ws://") +
+          (import.meta.env.DEV ? "localhost:5800" : window.location.host) +
+          "/ws"
+      );
+      socketRef.current = socket;
 
-    socket.onmessage = (event) => {
-      const data = JSON.parse(event.data);
+      socket.onmessage = (event) => {
+        const data = JSON.parse(event.data);
 
-      if (data.type == undefined)
-        throw new Error("Received message without type");
+        if (data.type == undefined)
+          throw new Error("Received message without type");
 
-      switch (data.type) {
-        case "state":
-          setId(data.session.id as number);
-          setDownloads(data.session.downloads as Download[]);
-          break;
-        case "executables":
-          setExecutables(data.executables as Executable[]);
-          break;
-        default:
-          console.warn("Received unknown message type", data.type);
-      }
-    };
+        switch (data.type) {
+          case "state":
+            setId(data.session.id as number);
+            setDownloads(data.session.downloads as Download[]);
+            break;
+          case "executables":
+            setExecutables(data.executables as Executable[]);
+            break;
+          default:
+            console.warn("Received unknown message type", data.type);
+        }
+      };
 
-    socket.onclose = (event) => {
-      console.log("WebSocket connection closed", event);
-    };
+      socket.onclose = (event) => {
+        console.log("WebSocket connection closed", event);
+
+        socketRef.current = null;
+        if (allowReconnectRef.current) {
+          setId(null);
+          setDownloads(null);
+          setExecutables(null);
+
+          setTimeout(() => {
+            connect();
+          }, 3000);
+        }
+      };
+    }
+
+    connect();
 
     return () => {
       // Close the socket when the component is unmounted
       console.log("Unmounting, closing WebSocket connection");
-      socket.close();
+      socketRef.current?.close();
+      allowReconnectRef.current = false;
     };
   }, []);
 
