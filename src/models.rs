@@ -206,8 +206,8 @@ impl Executable {
 #[derive(Debug, Deserialize)]
 #[serde(tag = "type")]
 pub enum IncomingMessage {
-    // A request from the client to delete a session token
-    DeleteSessionToken { id: u32 },
+    // A request from the client to delete a download token
+    DeleteDownloadToken { id: u32 },
 }
 
 #[derive(Debug, Serialize)]
