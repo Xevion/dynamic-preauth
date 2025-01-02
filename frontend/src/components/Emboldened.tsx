@@ -29,7 +29,7 @@ const Emboldened = ({
       )}
     >
       {children ?? (
-        <span class="animate-pulse bg-teal-800 max-h-1 overflow-hidden select-none text-transparent">
+        <span className="animate-pulse bg-teal-800 max-h-1 overflow-hidden select-none text-transparent">
           {skeletonWidth ?? "?"}
         </span>
       )}

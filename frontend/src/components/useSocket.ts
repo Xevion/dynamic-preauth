@@ -1,29 +1,39 @@
+import { withBackend } from "@/util";
 import { useEffect, useRef, useState } from "react";
 
-interface Download {
+export interface Download {
   token: number;
   filename: string;
   last_used: string;
   download_time: string;
 }
 
-interface Executable {
+export interface Executable {
   id: string;
   filename: string;
   size: number;
 }
 
-interface UseSocketResult {
+export interface UseSocketResult {
   id: number | null;
+  status: Status;
   executables: Executable[] | null;
   downloads: Download[] | null;
+  buildLog: string | null;
   deleteDownload: (id: number) => void;
 }
+
+export type Status = "connected" | "disconnected" | "connecting";
 
 function useSocket(): UseSocketResult {
   const [id, setId] = useState<number | null>(null);
   const [downloads, setDownloads] = useState<Download[] | null>(null);
-  const [executables, setExecutables] = useState<Executable[] | null>(null);
+  const [executables, setExecutables] = useState<{
+    build_log: string | null;
+    executables: Executable[];
+  } | null>(null);
+  const [status, setStatus] = useState<Status>("connecting");
+
   const socketRef = useRef<WebSocket | null>(null);
   const allowReconnectRef = useRef<boolean>(true);
 
@@ -37,7 +47,7 @@ function useSocket(): UseSocketResult {
     }
     socketRef.current.send(
       JSON.stringify({
-        type: "delete",
+        type: "delete-download-token",
         token: download_token,
       })
     );
@@ -46,9 +56,10 @@ function useSocket(): UseSocketResult {
   useEffect(() => {
     function connect() {
       const socket = new WebSocket(
-        (window.location.protocol === "https:" ? "wss://" : "ws://") +
-          (import.meta.env.DEV ? "localhost:5800" : window.location.host) +
+        withBackend(
+          window.location.protocol === "https:" ? "wss://" : "ws://",
           "/ws"
+        )
       );
       socketRef.current = socket;
 
@@ -64,7 +75,10 @@ function useSocket(): UseSocketResult {
             setDownloads(data.session.downloads as Download[]);
             break;
           case "executables":
-            setExecutables(data.executables as Executable[]);
+            setExecutables({
+              build_log: data.build_log,
+              executables: data.executables as Executable[],
+            });
             break;
           default:
             console.warn("Received unknown message type", data.type);
@@ -97,7 +111,14 @@ function useSocket(): UseSocketResult {
     };
   }, []);
 
-  return { id, downloads, executables, deleteDownload };
+  return {
+    id,
+    downloads,
+    status,
+    executables: executables?.executables ?? null,
+    buildLog: executables?.build_log,
+    deleteDownload,
+  };
 }
 
 export default useSocket;
