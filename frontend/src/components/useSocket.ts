@@ -61,7 +61,7 @@ function useSocket({ notify }: UseSocketProps): UseSocketResult {
   }[readyState] as Status;
 
   useEffect(() => {
-    if (readyState === WebSocket.CLOSED || readyState === WebSocket.CLOSING) {
+    if (connectionStatus === "closing" || connectionStatus === "closed") {
       setId(null);
       setDownloads(null);
       setExecutables(null);
