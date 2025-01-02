@@ -6,7 +6,7 @@ import Demo from "@/components/Demo";
 <Base>
   <div class="w-screen h-screen flex flex-col items-center middle">
     <div
-      class="noise-card rounded-sm relative z-20 border-zinc-700 md:border w-full max-w-[40rem] md:mt-16 mb-8 shadow-lg"
+      class="noise-card rounded-sm relative z-20 border-zinc-700 md:border w-full max-w-[40rem] min-h-[41.25rem] md:mt-16 mb-8 shadow-lg"
       style={{
         backgroundPosition:
           Math.random() * 100 + "px " + Math.random() * 100 + "px",
@@ -43,7 +43,7 @@ import Demo from "@/components/Demo";
           <span class="px-3 text-2xl font-bebas tracking-wide">Demo</span>
           <hr class="w-32 h-px border-0 bg-zinc-600 my-0" />
         </div>
-        <Demo client:load />
+        <Demo client:only />
       </div>
     </div>
   </div>

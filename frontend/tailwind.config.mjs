@@ -4,16 +4,13 @@ export default {
   theme: {
     extend: {
       animation: {
-        "pulse-border": "pulse-border 1s ease-in-out infinite",
+        "pulse-border": "pulse-border 1s cubic-bezier(0.4, 0, 0.6, 1) infinite",
         "pulse-dark": "pulse-dark 2.5s ease-in-out infinite",
       },
       keyframes: {
         "pulse-border": {
-          "0%, 100%": {
-            "--tw-border-opacity": "1",
-          },
           "50%": {
-            "--tw-border-opacity": "0.5",
+            borderColor: "rgba(100, 100, 100)",
           },
         },
         "pulse-dark": {

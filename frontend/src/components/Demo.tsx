@@ -41,7 +41,7 @@ const Demo = ({ class: className }: DemoProps) => {
     highlightedTimeoutRef.current = setTimeout(() => {
       highlightedTimeoutRef.current = null;
       setHighlightedToken(null);
-    }, 1250);
+    }, 1500);
   }
 
   return (
@@ -74,7 +74,7 @@ const Demo = ({ class: className }: DemoProps) => {
             className={cn(
               "transition-colors border hover:border-zinc-500 duration-100 ease-in border-transparent",
               {
-                "bg-zinc-500 animate-pulse-border border-white text-zinc-50":
+                "bg-zinc-500 animate-pulse-border border-zinc-300 text-zinc-50":
                   highlightedToken === download.token,
               }
             )}
