@@ -13,8 +13,6 @@ const Demo = ({ class: className }: DemoProps) => {
   const { id, downloads, executables } = useSocket();
   // TODO: Toasts
 
-  console.log([executables == null]);
-
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
   const highlightedTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 

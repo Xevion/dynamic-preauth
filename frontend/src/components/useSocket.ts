@@ -86,7 +86,7 @@ function useSocket(): UseSocketResult {
       };
 
       socket.onclose = (event) => {
-        console.log("WebSocket connection closed", event);
+        console.warn("WebSocket connection closed", event);
 
         socketRef.current = null;
         if (allowReconnectRef.current) {
@@ -105,7 +105,7 @@ function useSocket(): UseSocketResult {
 
     return () => {
       // Close the socket when the component is unmounted
-      console.log("Unmounting, closing WebSocket connection");
+      console.debug("Unmounting, closing WebSocket connection");
       socketRef.current?.close();
       allowReconnectRef.current = false;
     };

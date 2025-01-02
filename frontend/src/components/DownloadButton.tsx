@@ -1,5 +1,3 @@
-"use client";
-
 import type { Executable } from "@/components/useSocket";
 import { cn, withBackend } from "@/util";
 import {
@@ -45,8 +43,6 @@ export default function DownloadButton({
 }: DownloadButtonProps) {
   const menuRef = useRef<HTMLButtonElement>(null);
 
-  console.log({ disabled });
-
   function getExecutable(id: string) {
     return executables?.find((e) => e.id.toLowerCase() === id.toLowerCase());
   }
@@ -58,41 +54,8 @@ export default function DownloadButton({
       return;
     }
 
-    try {
-      const response = await fetch(withBackend(`/download/${executable.id}`), {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/octet-stream",
-        },
-      });
-
-      if (!response.ok) {
-        if (response.headers.get("Content-Type") === "application/json") {
-          const json = await response.json();
-          console.error("Download failed", json);
-        } else {
-          console.error(
-            "Download failed (unreadable response)",
-            response.statusText
-          );
-        }
-      }
-
-      // Create blob link to download
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-
-      // Create a link element and click it to download the file
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", executable.filename);
-      document.body.appendChild(link);
-      link.click();
-      link.parentNode!.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("Download failed", error);
-    }
+    // Open the download link in a new tab
+    window.open(withBackend(`/download/${executable.id}`), "_blank");
   }
 
   function handleDownloadAutomatic() {
@@ -121,6 +84,7 @@ export default function DownloadButton({
     >
       <Button
         onClick={handleDownloadAutomatic}
+        suppressHydrationWarning
         disabled={disabled}
         className={cn("pl-3 font-semibold pr-2.5", {
           "hover:bg-white/5": !disabled,
@@ -131,7 +95,8 @@ export default function DownloadButton({
       <Menu>
         <MenuButton
           ref={menuRef}
-          disabled={disabled ?? false}
+          suppressHydrationWarning
+          disabled={disabled}
           className={cn("pl-1.5 text-transparent min-h-8 pr-2", {
             "hover:bg-white/5": !disabled,
           })}
