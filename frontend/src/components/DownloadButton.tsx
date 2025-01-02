@@ -128,10 +128,14 @@ export default function DownloadButton({
             <>
               <MenuSeparator className="my-1 h-px bg-white/10" />
               <MenuItem>
-                <button className="group flex w-full items-center gap-2 rounded-lg py-1.5 px-2 data-[focus]:bg-white/10">
+                <a
+                  className="group flex w-full items-center gap-2 rounded-lg py-1.5 px-2 data-[focus]:bg-white/10"
+                  href={buildLog}
+                  target="_blank"
+                >
                   <BeakerIcon className="size-4 fill-white/40" />
                   Build Logs
-                </button>
+                </a>
               </MenuItem>
             </>
           ) : null}
