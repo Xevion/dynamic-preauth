@@ -2,7 +2,7 @@ import Badge from "@/components/Badge";
 import Emboldened from "@/components/Emboldened";
 import useSocket from "@/components/useSocket";
 import { cn, plural, toHex, type ClassValue } from "@/util";
-import { useRef, useState } from "preact/hooks";
+import { useRef, useState } from "react";
 
 type DemoProps = {
   class?: ClassValue;

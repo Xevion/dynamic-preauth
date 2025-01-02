@@ -2,7 +2,8 @@
 import { defineConfig } from "astro/config";
 import tailwind from "@astrojs/tailwind";
 import sitemap from "@astrojs/sitemap";
-import preact from "@astrojs/preact";
+
+import react from "@astrojs/react";
 
 // TODO: Add linting to build steps
 
@@ -21,8 +22,6 @@ export default defineConfig({
       priority: 1.0,
       // xslURL: "/sitemap.xsl",
     }),
-    preact({
-      devtools: import.meta.env.DEV ?? false,
-    }),
+    react(),
   ],
 });
