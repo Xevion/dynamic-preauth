@@ -51,6 +51,18 @@ impl Session {
         return self.downloads.last().unwrap();
     }
 
+    // Delete a download from the session
+    // Returns true if the download was deleted, false if it was not found
+    pub fn delete_download(&mut self, token: u32) -> bool {
+        if let Some(index) = self.downloads.iter().position(|d| d.token == token) {
+            self.downloads.remove(index);
+            true
+        } else {
+            tracing::warn!("Attempted to delete non-existent download token: {}", token);
+            false
+        }
+    }
+
     // This function's failure is not a failure to transmit the message, but a failure to buffer it into the channel (or any preceding steps).
     pub fn send_message(&mut self, message: OutgoingMessage) -> Result<(), anyhow::Error> {
         if self.tx.is_none() {

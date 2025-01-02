@@ -84,12 +84,25 @@ async fn handle_socket(session_id: u32, websocket: WebSocket) {
     // Use an unbounded channel to handle buffering and flushing of messages to the websocket...
     let (tx_channel, tx_channel_rx) = mpsc::unbounded_channel();
     let transmit = UnboundedReceiverStream::new(tx_channel_rx);
-    let fut_handle_tx_buffer = transmit.forward(socket_tx).map(|result| {
-        tracing::debug!("WebSocket send result: {:?}", result);
-        if let Err(e) = result {
-            tracing::error!(error = ?e, "websocket send error");
-        }
-    });
+    let fut_handle_tx_buffer = transmit
+        .then(|message| async {
+            match message {
+                Ok(ref message) => {
+                    tracing::debug!(message = ?message, "Outgoing Message");
+                }
+                Err(ref e) => {
+                    tracing::error!(error = ?e, "Outgoing Message Error");
+                }
+            }
+            message
+        })
+        .forward(socket_tx)
+        .map(|result| {
+            tracing::debug!("WebSocket send result: {:?}", result);
+            if let Err(e) = result {
+                tracing::error!(error = ?e, "websocket send error");
+            }
+        });
     tokio::task::spawn(fut_handle_tx_buffer);
 
     let store = &mut *STORE.lock().await;
@@ -144,7 +157,23 @@ async fn handle_socket(session_id: u32, websocket: WebSocket) {
                 // Deserialize
                 match serde_json::from_str::<IncomingMessage>(text) {
                     Ok(message) => {
-                        tracing::info!("Received message: {:?}", message);
+                        tracing::debug!(message = ?message, "Received message");
+
+                        match message {
+                            IncomingMessage::DeleteDownloadToken { id } => {
+                                let store = &mut *STORE.lock().await;
+                                let session = store
+                                    .sessions
+                                    .get_mut(&session_id)
+                                    .expect("Session not found");
+
+                                if session.delete_download(id) {
+                                    session
+                                        .send_state()
+                                        .expect("Failed to buffer state message");
+                                }
+                            }
+                        }
                     }
                     Err(e) => {
                         tracing::error!("Error deserializing message: {} {}", text, e);
