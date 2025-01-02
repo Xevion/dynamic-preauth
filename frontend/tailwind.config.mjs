@@ -4,9 +4,18 @@ export default {
   theme: {
     extend: {
       animation: {
+        "pulse-border": "pulse-border 1s ease-in-out infinite",
         "pulse-dark": "pulse-dark 2.5s ease-in-out infinite",
       },
       keyframes: {
+        "pulse-border": {
+          "0%, 100%": {
+            "--tw-border-opacity": "1",
+          },
+          "50%": {
+            "--tw-border-opacity": "0.5",
+          },
+        },
         "pulse-dark": {
           "0%, 100%": {
             backgroundColor: "#0A3026",
