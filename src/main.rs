@@ -97,6 +97,7 @@ async fn handle_socket(session_id: u32, websocket: WebSocket) {
     // Create the executable message first, borrow issues
     let executable_message = OutgoingMessage::Executables {
         executables: store.executable_json(),
+        build_log: store.build_log.clone(),
     };
 
     let session = store
@@ -316,6 +317,9 @@ async fn main() {
         )))
         .init();
 
+    // Add the build log & executables to the store
+    let mut store = STORE.lock().await;
+
     // Check if we are deployed on Railway
     let is_railway = env::var("RAILWAY_PROJECT_ID").is_ok();
     if is_railway {
@@ -328,12 +332,13 @@ async fn main() {
         );
 
         tracing::info!("Build logs available here: {}", build_logs);
+        store.build_log = Some(build_logs);
     }
 
-    // Add the executables to the store
-    let mut store = STORE.lock().await;
-    store.add_executable("windows", "./demo.exe");
-    store.add_executable("linux", "./demo-linux");
+    store.add_executable("Windows", "./demo.exe");
+    store.add_executable("Linux", "./demo-linux");
+    // store.add_executable("MacOS", "./demo-macos");
+
     drop(store); // critical: Drop the lock to avoid deadlock, otherwise the server will hang
 
     // Allow all origins if: debug mode or RAILWAY_PUBLIC_DOMAIN is not set
@@ -351,7 +356,7 @@ async fn main() {
 
     let cors = Cors::new()
         .allow_origin(&origin)
-        .allow_methods(vec![Method::GET])
+        .allow_methods(vec![Method::GET, Method::OPTIONS])
         .into_handler();
     tracing::debug!("CORS Allowed Origin: {}", &origin);
 

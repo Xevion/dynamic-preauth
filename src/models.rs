@@ -92,11 +92,14 @@ pub struct State<'a> {
     pub executables: HashMap<&'a str, Executable>,
     // A map of sessions, keyed by their identifier (a random number)
     pub sessions: HashMap<u32, Session>,
+    // Provided on startup, the URL to the build log of the current deployment
+    pub build_log: Option<String>,
 }
 
 impl<'a> State<'a> {
     pub fn new() -> Mutex<Self> {
         Mutex::new(Self {
+            build_log: None,
             executables: HashMap::new(),
             sessions: HashMap::new(),
         })
@@ -149,8 +152,15 @@ impl<'a> State<'a> {
         res.add_cookie(
             Cookie::build(("Session", id.to_string()))
                 .http_only(true)
+                .partitioned(true)
+                .secure(cfg!(debug_assertions) == false)
                 .path("/")
-                .same_site(salvo::http::cookie::SameSite::Lax)
+                // Use SameSite=None only in development
+                .same_site(if cfg!(debug_assertions) {
+                    salvo::http::cookie::SameSite::None
+                } else {
+                    salvo::http::cookie::SameSite::Strict
+                })
                 .permanent()
                 .build(),
         );
@@ -204,7 +214,7 @@ impl Executable {
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(tag = "type")]
+#[serde(tag = "type", rename_all = "kebab-case")]
 pub enum IncomingMessage {
     // A request from the client to delete a download token
     DeleteDownloadToken { id: u32 },
@@ -223,6 +233,7 @@ pub enum OutgoingMessage {
         session: Session,
     },
     Executables {
+        build_log: Option<String>,
         executables: Vec<ExecutableJson>,
     },
 }
