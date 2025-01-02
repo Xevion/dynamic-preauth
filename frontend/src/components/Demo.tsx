@@ -3,21 +3,36 @@ import DownloadButton from "@/components/DownloadButton";
 import Emboldened from "@/components/Emboldened";
 import useSocket from "@/components/useSocket";
 import { cn, plural, toHex, type ClassValue } from "@/util";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type DemoProps = {
   class?: ClassValue;
 };
 
 const Demo = ({ class: className }: DemoProps) => {
-  const { id, downloads, executables } = useSocket();
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const { id, downloads, executables, deleteDownload } = useSocket({
+    notify: (token) => {
+      audioRef.current!.play();
+      highlight(token);
+    },
+  });
   // TODO: Toasts
 
-  const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
+  const [highlightedToken, setHighlightedToken] = useState<number | null>(null);
   const highlightedTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  function highlight(index: number) {
-    setHighlightedIndex(index);
+  useEffect(() => {
+    audioRef.current = new Audio("/notify.wav");
+    audioRef.current.volume = 1;
+    return () => {
+      audioRef.current!.remove();
+    };
+  }, []);
+
+  function highlight(token: number) {
+    setHighlightedToken(token);
 
     if (highlightedTimeoutRef.current != null) {
       clearTimeout(highlightedTimeoutRef.current);
@@ -25,7 +40,7 @@ const Demo = ({ class: className }: DemoProps) => {
 
     highlightedTimeoutRef.current = setTimeout(() => {
       highlightedTimeoutRef.current = null;
-      setHighlightedIndex(null);
+      setHighlightedToken(null);
     }, 1250);
   }
 
@@ -46,25 +61,25 @@ const Demo = ({ class: className }: DemoProps) => {
         </Emboldened>{" "}
         known {plural("download", downloads?.length ?? 0)}.
       </p>
-      <div className="flex flex-wrap justify-center gap-y-2.5">
+      <div className="flex flex-wrap justify-center gap-y-2.5 gap-x-2">
         <DownloadButton
+          key="download"
           disabled={executables == null}
           buildLog={"https://railway.com"}
           executables={executables}
         />
         {downloads?.map((download, i) => (
           <Badge
+            key={download.token}
             className={cn(
               "transition-colors border hover:border-zinc-500 duration-100 ease-in border-transparent",
               {
-                "!border-zinc-300 dark:bg-zinc-600": i === highlightedIndex,
+                "bg-zinc-500 animate-pulse-border border-white text-zinc-50":
+                  highlightedToken === download.token,
               }
             )}
-            onClick={function onClick() {
-              highlight(i);
-              const audio = new Audio("/notify.wav");
-              audio.volume = 0.5;
-              audio.play();
+            onClick={() => {
+              deleteDownload(download.token);
             }}
           >
             {toHex(download.token)}
