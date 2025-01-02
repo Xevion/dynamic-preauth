@@ -4,15 +4,17 @@ import Demo from "@/components/Demo";
 ---
 
 <Base>
-  <div class="w-screen h-screen flex flex-col items-center middle">
+  <div class="w-screen min-h-screen flex flex-col items-center middle">
     <div
-      class="noise-card rounded-sm relative z-20 border-zinc-700 md:border w-full max-w-[40rem] min-h-[41.25rem] md:mt-16 mb-8 shadow-lg"
+      class="noise-card rounded-sm relative z-20 border-zinc-700 md:border w-full max-w-[40rem] max-sm:h-full min-h-[618.5px] md:mt-16 shadow-lg"
       style={{
         backgroundPosition:
           Math.random() * 100 + "px " + Math.random() * 100 + "px",
       }}
     >
-      <div class="px-3 pt-4 pb-5 font-inter prose prose-zinc prose-invert">
+      <div
+        class="px-3 pt-4 pb-5 font-inter prose prose-zinc prose-invert h-full"
+      >
         <h1
           class="text-5xl font-bebas bold text-center mb-3 text-zinc-300"
           style={{ textShadow: "0 0 10px rgba(0,0,0,0.7)" }}

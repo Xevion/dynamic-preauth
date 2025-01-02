@@ -1,6 +1,6 @@
 import { withBackend } from "@/util";
 import { useEffect, useRef, useState } from "react";
-import useWebSocket from "react-use-websocket";
+import useWebSocket, { ReadyState } from "react-use-websocket";
 
 export interface Download {
   token: number;
@@ -27,14 +27,22 @@ export interface UseSocketProps {
   notify?: (token: number) => void;
 }
 
-export type Status = "connected" | "disconnected" | "connecting";
+export type Status =
+  | "connecting"
+  | "open"
+  | "closing"
+  | "closed"
+  | "uninstantiated";
 
 function useSocket({ notify }: UseSocketProps): UseSocketResult {
   const { sendMessage, lastMessage, readyState } = useWebSocket(
     withBackend(
       window.location.protocol === "https:" ? "wss://" : "ws://",
       "/ws"
-    )
+    ),
+    {
+      shouldReconnect: () => true,
+    }
   );
 
   const [id, setId] = useState<number | null>(null);
@@ -43,6 +51,22 @@ function useSocket({ notify }: UseSocketProps): UseSocketResult {
     build_log: string | null;
     executables: Executable[];
   } | null>(null);
+
+  const connectionStatus: Status = {
+    [ReadyState.CONNECTING]: "connecting",
+    [ReadyState.OPEN]: "open",
+    [ReadyState.CLOSING]: "closing",
+    [ReadyState.CLOSED]: "closed",
+    [ReadyState.UNINSTANTIATED]: "uninstantiated",
+  }[readyState] as Status;
+
+  useEffect(() => {
+    if (readyState === WebSocket.CLOSED || readyState === WebSocket.CLOSING) {
+      setId(null);
+      setDownloads(null);
+      setExecutables(null);
+    }
+  }, [readyState]);
 
   useEffect(() => {
     {

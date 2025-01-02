@@ -26,6 +26,7 @@ const Demo = ({ class: className }: DemoProps) => {
   useEffect(() => {
     audioRef.current = new Audio("/notify.wav");
     audioRef.current.volume = 1;
+    audioRef.current.autoplay = false;
     return () => {
       audioRef.current!.remove();
     };
