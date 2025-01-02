@@ -7,14 +7,22 @@ import react from "@astrojs/react";
 
 // TODO: Add linting to build steps
 
+console.log(import.meta.env);
 // https://astro.build/config
+
 export default defineConfig({
   build: {
     assets: "assets",
   },
   site: import.meta.env.DEV
     ? "https://localhost:4321"
-    : `https://${import.meta.env.RAILWAY_PUBLIC_DOMAIN}`,
+    : // @ts-ignore
+      `https://${
+        import.meta.env.RAILWAY_PUBLIC_DOMAIN ??
+        (() => {
+          throw new Error("nullish");
+        })()
+      }`,
   integrations: [
     tailwind(),
     sitemap({
