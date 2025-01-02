@@ -1,5 +1,5 @@
-use std::env;
 use std::sync::LazyLock;
+use std::{env, vec};
 
 use futures_util::{FutureExt, StreamExt};
 use models::{IncomingMessage, OutgoingMessage};
@@ -356,7 +356,7 @@ async fn main() {
 
     let cors = Cors::new()
         .allow_origin(&origin)
-        .allow_methods(vec![Method::GET, Method::OPTIONS])
+        .allow_methods(vec![Method::GET])
         .into_handler();
     tracing::debug!("CORS Allowed Origin: {}", &origin);
 
@@ -369,7 +369,6 @@ async fn main() {
 
     let router = Router::new()
         .hoop(CatchPanic::new())
-        .hoop(cors)
         // /notify does not need a session, nor should it have one
         .push(Router::with_path("notify").post(notify))
         .push(
@@ -383,7 +382,7 @@ async fn main() {
                 .push(Router::with_path("<**path>").get(static_dir)),
         );
 
-    let service = Service::new(router).hoop(Logger::new());
+    let service = Service::new(router).hoop(cors).hoop(Logger::new());
 
     let acceptor = TcpListener::new(addr).bind().await;
     Server::new(acceptor).serve(service).await;
