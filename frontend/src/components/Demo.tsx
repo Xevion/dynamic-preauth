@@ -1,4 +1,5 @@
 import Badge from "@/components/Badge";
+import DownloadButton from "@/components/DownloadButton";
 import Emboldened from "@/components/Emboldened";
 import useSocket from "@/components/useSocket";
 import { cn, plural, toHex, type ClassValue } from "@/util";
@@ -9,8 +10,10 @@ type DemoProps = {
 };
 
 const Demo = ({ class: className }: DemoProps) => {
-  const { id, downloads } = useSocket();
+  const { id, downloads, executables } = useSocket();
   // TODO: Toasts
+
+  console.log([executables == null]);
 
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
   const highlightedTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -29,8 +32,8 @@ const Demo = ({ class: className }: DemoProps) => {
   }
 
   return (
-    <div class={cn(className, "px-5 leading-6")}>
-      <p class="mt-3 mb-3">
+    <div className={cn(className, "px-5 leading-6")}>
+      <p className="mt-3 mb-3">
         This demo uses websockets to communicate between the server and the
         browser. Each download gets a unique identifier bound to the user
         session.
@@ -45,7 +48,12 @@ const Demo = ({ class: className }: DemoProps) => {
         </Emboldened>{" "}
         known {plural("download", downloads?.length ?? 0)}.
       </p>
-      <div class="flex flex-wrap justify-center gap-y-2.5">
+      <div className="flex flex-wrap justify-center gap-y-2.5">
+        <DownloadButton
+          disabled={executables == null}
+          buildLog={"https://railway.com"}
+          executables={executables}
+        />
         {downloads?.map((download, i) => (
           <Badge
             className={cn(
@@ -65,8 +73,8 @@ const Demo = ({ class: className }: DemoProps) => {
           </Badge>
         ))}
       </div>
-      <div class="mt-4 p-2 bg-zinc-900/90 rounded-md border border-zinc-700">
-        <p class="my-0">
+      <div className="mt-4 p-2 bg-zinc-900/90 rounded-md border border-zinc-700">
+        <p className="my-0">
           The server running this is completely ephemeral, can restart at any
           time, and purges data on regular intervals - at which point the
           executables you've downloaded will no longer function.
