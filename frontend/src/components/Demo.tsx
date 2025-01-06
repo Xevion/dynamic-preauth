@@ -12,7 +12,7 @@ type DemoProps = {
 const Demo = ({ class: className }: DemoProps) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const { id, downloads, executables, deleteDownload } = useSocket({
+  const { id, downloads, executables, deleteDownload, buildLog } = useSocket({
     notify: (token) => {
       audioRef.current!.play();
       highlight(token);
@@ -66,7 +66,7 @@ const Demo = ({ class: className }: DemoProps) => {
         <DownloadButton
           key="download"
           disabled={executables == null}
-          buildLog={"https://railway.com"}
+          buildLog={buildLog}
           executables={executables}
         />
         {downloads?.map((download, i) => (
