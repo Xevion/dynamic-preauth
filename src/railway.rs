@@ -26,6 +26,21 @@ struct BuildLogEntry {
     timestamp: String,
 }
 
+#[derive(Debug, Deserialize)]
+struct DeploymentNode {
+    id: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct DeploymentEdge {
+    node: DeploymentNode,
+}
+
+#[derive(Debug, Deserialize)]
+struct DeploymentsConnection {
+    edges: Vec<DeploymentEdge>,
+}
+
 fn strip_ansi_codes(text: &str) -> String {
     // Simple regex to remove ANSI escape sequences
     let re = regex::Regex::new(r"\x1b\[[0-9;]*[a-zA-Z]").unwrap();
@@ -50,9 +65,92 @@ fn should_stop_at_message(message: &str) -> bool {
     false
 }
 
+async fn fetch_latest_deployment_id() -> Result<String> {
+    let token = env::var("RAILWAY_TOKEN")?;
+    let service_id = env::var("RAILWAY_SERVICE_ID")?;
+    let project_id = env::var("RAILWAY_PROJECT_ID")?;
+    let environment_id = env::var("RAILWAY_ENVIRONMENT_ID")?;
+
+    let query = r#"
+        query deployments($input: DeploymentListInput!, $first: Int) {
+            deployments(input: $input, first: $first) {
+                edges {
+                    node {
+                        id
+                    }
+                }
+            }
+        }
+    "#;
+
+    let variables = serde_json::json!({
+        "input": {
+            "projectId": project_id,
+            "serviceId": service_id,
+            "environmentId": environment_id,
+            "status": {"in": ["SUCCESS", "DEPLOYING", "SLEEPING", "BUILDING"]}
+        },
+        "first": 1
+    });
+
+    let request = GraphQLRequest {
+        query: query.to_string(),
+        variables,
+    };
+
+    let client = reqwest::Client::new();
+    let response = client
+        .post("https://backboard.railway.app/graphql/v2")
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&request)
+        .send()
+        .await?;
+
+    let response_text = response.text().await?;
+    let graphql_response: GraphQLResponse = serde_json::from_str(&response_text)?;
+
+    if let Some(errors) = graphql_response.errors {
+        let error_messages: Vec<String> = errors.iter().map(|e| e.message.clone()).collect();
+        return Err(anyhow::anyhow!(
+            "GraphQL errors: {}",
+            error_messages.join(", ")
+        ));
+    }
+
+    if let Some(data) = graphql_response.data {
+        if let Some(deployments_value) = data.get("deployments") {
+            if let Ok(deployments) =
+                serde_json::from_value::<DeploymentsConnection>(deployments_value.clone())
+            {
+                if let Some(first_edge) = deployments.edges.first() {
+                    return Ok(first_edge.node.id.clone());
+                }
+            }
+        }
+    }
+
+    Err(anyhow::anyhow!(
+        "No deployments found or unexpected response structure"
+    ))
+}
+
 pub async fn fetch_build_logs() -> Result<crate::models::BuildLogs> {
     let token = env::var("RAILWAY_TOKEN")?;
-    let deployment_id = env::var("RAILWAY_DEPLOYMENT_ID")?;
+
+    // Get deployment ID - in debug mode, fetch latest if not specified
+    let deployment_id = if cfg!(debug_assertions) {
+        match env::var("RAILWAY_DEPLOYMENT_ID") {
+            Ok(id) => id,
+            Err(_) => {
+                tracing::debug!(
+                    "No RAILWAY_DEPLOYMENT_ID specified in debug mode, fetching latest deployment"
+                );
+                fetch_latest_deployment_id().await?
+            }
+        }
+    } else {
+        env::var("RAILWAY_DEPLOYMENT_ID")?
+    };
 
     let query = r#"
         query buildLogs($deploymentId: String!, $endDate: DateTime, $filter: String, $limit: Int, $startDate: DateTime) {
@@ -142,7 +240,7 @@ pub async fn fetch_build_logs() -> Result<crate::models::BuildLogs> {
                     filtered_logs.push(formatted_entry);
                 }
 
-                                // Add Railway URL header to the logs
+                // Add Railway URL header to the logs
                 let railway_url = format!(
                     "Railway Build Logs: https://railway.com/project/{}/service/{}?environmentId={}&id={}#build\n\n",
                     env::var("RAILWAY_PROJECT_ID").unwrap_or_default(),
@@ -150,10 +248,10 @@ pub async fn fetch_build_logs() -> Result<crate::models::BuildLogs> {
                     env::var("RAILWAY_ENVIRONMENT_ID").unwrap_or_default(),
                     deployment_id
                 );
-                
+
                 let content = format!("{}{}", railway_url, filtered_logs.join("\n"));
                 let fetched_at = chrono::Utc::now();
-                
+
                 // Generate hash for the content
                 use std::collections::hash_map::DefaultHasher;
                 use std::hash::{Hash, Hasher};

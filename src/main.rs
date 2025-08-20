@@ -111,7 +111,11 @@ async fn handle_socket(session_id: u32, websocket: WebSocket) {
     // Create the executable message first, borrow issues
     let executable_message = OutgoingMessage::Executables {
         executables: store.executable_json(),
-        build_log: if store.build_logs.is_some() { Some("/build-logs".to_string()) } else { None },
+        build_log: if store.build_logs.is_some() {
+            Some("/build-logs".to_string())
+        } else {
+            None
+        },
     };
 
     let session = store
@@ -403,12 +407,19 @@ async fn main() {
     // Check if we are deployed on Railway
     let is_railway = env::var("RAILWAY_PROJECT_ID").is_ok();
     if is_railway {
+        // In debug mode, we might not have RAILWAY_DEPLOYMENT_ID set
+        let deployment_id = if cfg!(debug_assertions) {
+            env::var("RAILWAY_DEPLOYMENT_ID").unwrap_or_else(|_| "latest".to_string())
+        } else {
+            env::var("RAILWAY_DEPLOYMENT_ID").unwrap()
+        };
+
         let build_logs_url = format!(
             "https://railway.com/project/{}/service/{}?environmentId={}&id={}#build",
             env::var("RAILWAY_PROJECT_ID").unwrap(),
             env::var("RAILWAY_SERVICE_ID").unwrap(),
             env::var("RAILWAY_ENVIRONMENT_ID").unwrap(),
-            env::var("RAILWAY_DEPLOYMENT_ID").unwrap()
+            deployment_id
         );
 
         tracing::info!("Build logs available here: {}", build_logs_url);
