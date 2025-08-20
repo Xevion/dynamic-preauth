@@ -55,7 +55,7 @@ fn main() {
             request(token);
         }
         Err(e) => {
-            eprintln!("Token was changed, but is not a valid u32 integer: {}", e);
+            eprintln!("Token is not a valid u32 integer: {}", e);
             eprintln!("Original Value: {}", key_data.value);
             return;
         }
