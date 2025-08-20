@@ -51,5 +51,10 @@ COPY --from=builder-demo /build/demo/target/x86_64-pc-windows-gnu/release/demo.e
 COPY --from=builder-demo /build/demo/target/x86_64-unknown-linux-gnu/release/demo ./demo-linux
 COPY --from=builder-server /build/server/target/release/dynamic-preauth ./dynamic-preauth
 
-EXPOSE 5800
+# Build-time arg for PORT, default to 5800
+ARG PORT=5800
+# Runtime environment var for PORT, default to build-time arg
+ENV PORT=${PORT}
+EXPOSE ${PORT}
+
 CMD ["/app/dynamic-preauth"]
