@@ -1,9 +1,16 @@
 use salvo::{http::cookie::Cookie, websocket::Message, Response};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, path};
-use tokio::sync::{mpsc::UnboundedSender, Mutex};
+use tokio::sync::mpsc::UnboundedSender;
 
 use crate::utility::search;
+
+#[derive(Debug, Clone)]
+pub struct BuildLogs {
+    pub content: String,
+    pub fetched_at: chrono::DateTime<chrono::Utc>,
+    pub content_hash: u64,
+}
 
 #[derive(Debug, Serialize, Clone)]
 pub struct Session {
@@ -98,26 +105,25 @@ pub struct SessionDownload {
 
 impl SessionDownload {}
 
-#[derive(Clone, Debug)]
-pub struct State<'a> {
-    // A map of executables, keyed by their type/platform
-    pub executables: HashMap<&'a str, Executable>,
-    // A map of sessions, keyed by their identifier (a random number)
+#[derive(Default)]
+pub struct State {
     pub sessions: HashMap<u32, Session>,
-    // Provided on startup, the URL to the build log of the current deployment
-    pub build_log: Option<String>,
+    pub executables: HashMap<String, Executable>,
+    pub build_logs: Option<BuildLogs>,
+    pub build_log_url: Option<String>,
 }
 
-impl<'a> State<'a> {
-    pub fn new() -> Mutex<Self> {
-        Mutex::new(Self {
-            build_log: None,
-            executables: HashMap::new(),
+impl State {
+    pub fn new() -> Self {
+        Self {
             sessions: HashMap::new(),
-        })
+            executables: HashMap::new(),
+            build_logs: None,
+            build_log_url: None,
+        }
     }
 
-    pub fn add_executable(&mut self, exe_type: &'a str, exe_path: &str) {
+    pub fn add_executable(&mut self, exe_type: &str, exe_path: &str) {
         let data = std::fs::read(&exe_path).expect("Unable to read file");
 
         let pattern = "a".repeat(1024);
@@ -140,7 +146,7 @@ impl<'a> State<'a> {
             key_end: key_end,
         };
 
-        self.executables.insert(exe_type, exe);
+        self.executables.insert(exe_type.to_string(), exe);
     }
 
     pub async fn new_session(&mut self, res: &mut Response) -> u32 {

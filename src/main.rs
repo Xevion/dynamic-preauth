@@ -19,9 +19,10 @@ use tracing_subscriber::EnvFilter;
 
 use crate::models::State;
 
-static STORE: LazyLock<Mutex<State>> = LazyLock::new(State::new);
+static STORE: LazyLock<Mutex<State>> = LazyLock::new(|| Mutex::new(State::new()));
 
 mod models;
+mod railway;
 mod utility;
 
 #[handler]
@@ -110,7 +111,7 @@ async fn handle_socket(session_id: u32, websocket: WebSocket) {
     // Create the executable message first, borrow issues
     let executable_message = OutgoingMessage::Executables {
         executables: store.executable_json(),
-        build_log: store.build_log.clone(),
+        build_log: if store.build_logs.is_some() { Some("/build-logs".to_string()) } else { None },
     };
 
     let session = store
@@ -183,6 +184,53 @@ async fn handle_socket(session_id: u32, websocket: WebSocket) {
         }
     };
     tokio::task::spawn(fut);
+}
+
+#[handler]
+pub async fn get_build_logs(req: &mut Request, res: &mut Response, _depot: &mut Depot) {
+    let store = STORE.lock().await;
+
+    if let Some(build_logs) = &store.build_logs {
+        // Use pre-computed hash for ETag
+        let etag = format!("\"{:x}\"", build_logs.content_hash);
+
+        // Check If-None-Match header
+        if let Some(if_none_match) = req.headers().get("If-None-Match") {
+            if if_none_match == &etag {
+                res.status_code(StatusCode::NOT_MODIFIED);
+                return;
+            }
+        }
+
+        // Check If-Modified-Since header
+        if let Some(if_modified_since) = req.headers().get("If-Modified-Since") {
+            if let Ok(if_modified_since_str) = if_modified_since.to_str() {
+                if let Ok(if_modified_since_time) =
+                    chrono::DateTime::parse_from_rfc2822(if_modified_since_str)
+                {
+                    if build_logs.fetched_at <= if_modified_since_time {
+                        res.status_code(StatusCode::NOT_MODIFIED);
+                        return;
+                    }
+                }
+            }
+        }
+
+        res.headers_mut().insert("ETag", etag.parse().unwrap());
+        res.headers_mut()
+            .insert("Content-Type", "text/plain; charset=utf-8".parse().unwrap());
+        res.headers_mut()
+            .insert("Cache-Control", "public, max-age=300".parse().unwrap());
+        res.headers_mut().insert(
+            "Last-Modified",
+            build_logs.fetched_at.to_rfc2822().parse().unwrap(),
+        );
+
+        res.render(&build_logs.content);
+    } else {
+        res.status_code(StatusCode::NOT_FOUND);
+        res.render("Build logs not available");
+    }
 }
 
 #[handler]
@@ -333,6 +381,9 @@ fn get_session_id(req: &Request, depot: &Depot) -> Option<u32> {
 
 #[tokio::main]
 async fn main() {
+    // Load environment variables from .env file
+    dotenv::dotenv().ok();
+
     let port = std::env::var("PORT").unwrap_or_else(|_| "5800".to_string());
     let addr = format!("0.0.0.0:{}", port);
     tracing_subscriber::fmt()
@@ -352,7 +403,7 @@ async fn main() {
     // Check if we are deployed on Railway
     let is_railway = env::var("RAILWAY_PROJECT_ID").is_ok();
     if is_railway {
-        let build_logs = format!(
+        let build_logs_url = format!(
             "https://railway.com/project/{}/service/{}?environmentId={}&id={}#build",
             env::var("RAILWAY_PROJECT_ID").unwrap(),
             env::var("RAILWAY_SERVICE_ID").unwrap(),
@@ -360,8 +411,26 @@ async fn main() {
             env::var("RAILWAY_DEPLOYMENT_ID").unwrap()
         );
 
-        tracing::info!("Build logs available here: {}", build_logs);
-        store.build_log = Some(build_logs);
+        tracing::info!("Build logs available here: {}", build_logs_url);
+        store.build_log_url = Some(build_logs_url);
+
+        // Try to fetch actual build logs using Railway API
+        if env::var("RAILWAY_TOKEN").is_ok() {
+            match crate::railway::fetch_build_logs().await {
+                Ok(build_logs) => {
+                    tracing::info!(
+                        "Successfully fetched build logs ({} bytes)",
+                        build_logs.content.len()
+                    );
+                    store.build_logs = Some(build_logs);
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to fetch build logs from Railway API: {}", e);
+                }
+            }
+        } else {
+            tracing::warn!("RAILWAY_TOKEN not set, skipping build log fetch");
+        }
     }
 
     store.add_executable("Windows", "./demo.exe");
@@ -400,6 +469,8 @@ async fn main() {
         .hoop(CatchPanic::new())
         // /notify does not need a session, nor should it have one
         .push(Router::with_path("notify").post(notify))
+        // /build-logs does not need a session
+        .push(Router::with_path("build-logs").get(get_build_logs))
         .push(
             Router::new()
                 .hoop(session_middleware)

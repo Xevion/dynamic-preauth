@@ -130,7 +130,7 @@ export default function DownloadButton({
               <MenuItem>
                 <a
                   className="group flex w-full items-center gap-2 rounded-lg py-1.5 px-2 data-[focus]:bg-white/10"
-                  href={buildLog}
+                  href={buildLog.startsWith('/') ? withBackend(buildLog) : buildLog}
                   target="_blank"
                 >
                   <BeakerIcon className="size-4 fill-white/40" />

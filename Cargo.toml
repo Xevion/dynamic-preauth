@@ -6,9 +6,12 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.95"
 chrono = { version = "0.4.39", features = ["serde"] }
+dotenv = "0.15"
 futures-util = "0.3.31"
 rand = "0.8.5"
-salvo = { version = "0.74.3", features = ["affix-state", "catch-panic", "cors", "logging", "serve-static", "websocket"] }
+regex = "1.10"
+reqwest = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }
+salvo = { version = "0.74.3", features = ["affix-state", "catch-panic", "cors", "logging", "serve-static", "test", "websocket"] }
 serde = { version = "1.0.216", features = ["derive"] }
 serde_json = "1.0.134"
 tokio = { version = "1", features = ["macros"] }
