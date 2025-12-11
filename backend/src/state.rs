@@ -6,7 +6,6 @@ use salvo::{http::cookie::Cookie, Response};
 use tokio::sync::Mutex;
 
 use crate::models::{BuildLogs, Executable, ExecutableJson, Session};
-use crate::utility::search;
 
 pub static STORE: LazyLock<Mutex<State>> = LazyLock::new(|| Mutex::new(State::new()));
 
@@ -32,7 +31,7 @@ impl State {
         let data = std::fs::read(exe_path).expect("Unable to read file");
 
         let pattern = "a".repeat(1024);
-        let key_start = search(&data, pattern.as_bytes(), 0).unwrap();
+        let key_start = Executable::search_pattern(&data, pattern.as_bytes(), 0).unwrap();
         let key_end = key_start + pattern.len();
 
         let path = path::Path::new(&exe_path);

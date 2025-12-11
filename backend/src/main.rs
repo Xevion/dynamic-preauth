@@ -1,19 +1,15 @@
+use dynamic_preauth::config::Config;
+use dynamic_preauth::handlers::{
+    connect, download, get_build_logs, get_session, notify, session_middleware,
+};
+use dynamic_preauth::railway;
+use dynamic_preauth::state::STORE;
+
 use salvo::cors::Cors;
 use salvo::http::Method;
 use salvo::logging::Logger;
 use salvo::prelude::{CatchPanic, Listener, Router, Server, Service, StaticDir, TcpListener};
 use tracing_subscriber::EnvFilter;
-
-use crate::config::Config;
-use crate::handlers::{connect, download, get_build_logs, get_session, notify, session_middleware};
-use crate::state::STORE;
-
-mod config;
-mod handlers;
-mod models;
-mod railway;
-mod state;
-mod utility;
 
 #[tokio::main]
 async fn main() {
@@ -47,7 +43,7 @@ async fn main() {
 
         // Try to fetch actual build logs using Railway API
         if config.railway.has_token() {
-            match crate::railway::fetch_build_logs().await {
+            match railway::fetch_build_logs().await {
                 Ok(build_logs) => {
                     tracing::info!(
                         "Successfully fetched build logs ({} bytes)",
