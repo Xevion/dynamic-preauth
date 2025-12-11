@@ -18,3 +18,11 @@ tokio = { version = "1", features = ["macros"] }
 tokio-stream = "0.1.17"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[profile.release]
+opt-level = "z"
+lto = true
+strip = "debuginfo"
+panic = "abort"
+codegen-units = 1
+overflow-checks = true
