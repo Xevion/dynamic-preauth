@@ -1,0 +1,42 @@
+{
+	"$schema": "https://docs.renovatebot.com/renovate-schema.json",
+	"extends": [
+		"config:recommended",
+		":dependencyDashboard",
+		":semanticCommits",
+		":automergeDigest",
+		":automergeMinor"
+	],
+	"schedule": ["before 5am on monday"],
+	"timezone": "America/Chicago",
+	"prConcurrentLimit": 3,
+	"prCreation": "not-pending",
+	"rebaseWhen": "behind-base-branch",
+	"semanticCommitScope": "deps",
+	"vulnerabilityAlerts": {
+		"labels": ["security"],
+		"automerge": true,
+		"schedule": ["at any time"]
+	},
+	"packageRules": [
+		{
+			"description": "Group all non-major dependency updates together",
+			"groupName": "all non-major dependencies",
+			"matchUpdateTypes": ["minor", "patch", "digest"],
+			"automerge": true,
+			"automergeType": "pr",
+			"minimumReleaseAge": "3 days"
+		},
+		{
+			"description": "Major updates get individual PRs for review",
+			"matchUpdateTypes": ["major"],
+			"automerge": false,
+			"minimumReleaseAge": "7 days"
+		}
+	],
+	"postUpdateOptions": ["pnpmDedupe"],
+	"lockFileMaintenance": {
+		"enabled": true,
+		"schedule": ["before 5am on monday"]
+	}
+}
