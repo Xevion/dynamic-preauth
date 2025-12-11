@@ -31,10 +31,7 @@ impl RailwayConfig {
         let project_id = self.railway_project_id.as_ref()?;
         let service_id = self.railway_service_id.as_ref()?;
         let environment_id = self.railway_environment_id.as_ref()?;
-        let deployment_id = self
-            .railway_deployment_id
-            .as_deref()
-            .unwrap_or("latest");
+        let deployment_id = self.railway_deployment_id.as_deref().unwrap_or("latest");
 
         Some(format!(
             "https://railway.com/project/{}/service/{}?environmentId={}&id={}#build",

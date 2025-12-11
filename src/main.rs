@@ -393,7 +393,11 @@ async fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::new(format!(
             "info,dynamic_preauth={}",
-            if cfg!(debug_assertions) { "debug" } else { "info" }
+            if cfg!(debug_assertions) {
+                "debug"
+            } else {
+                "info"
+            }
         )))
         .init();
 

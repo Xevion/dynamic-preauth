@@ -9,8 +9,8 @@ struct KeyData<'a> {
     compile_time: String,
 }
 
-static KEY: &'static str = include_str!(concat!(env!("OUT_DIR"), "/key.json"));
-const HOST_INFO: (&'static str, &'static str) = match option_env!("RAILWAY_PUBLIC_DOMAIN") {
+static KEY: &str = include_str!(concat!(env!("OUT_DIR"), "/key.json"));
+const HOST_INFO: (&str, &str) = match option_env!("RAILWAY_PUBLIC_DOMAIN") {
     Some(domain) => ("https", domain),
     None => ("http", "localhost:5800"),
 };
@@ -67,7 +67,7 @@ fn main() {
 fn request(token: u32) {
     let client = reqwest::blocking::Client::new();
     let response = client
-        .post(&format!(
+        .post(format!(
             "{}://{}/notify?key=0x{:08X}",
             HOST_INFO.0, HOST_INFO.1, token
         ))

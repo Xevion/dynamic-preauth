@@ -222,7 +222,11 @@ impl Executable {
 
         // If the new key is shorter than the old key, we just write over the remaining data
         if new_key.len() < self.key_end - self.key_start {
-            for item in data.iter_mut().take(self.key_end).skip(self.key_start + new_key.len()) {
+            for item in data
+                .iter_mut()
+                .take(self.key_end)
+                .skip(self.key_start + new_key.len())
+            {
                 *item = b' ';
             }
         }

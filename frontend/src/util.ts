@@ -1,4 +1,3 @@
-import { WindowIcon } from "@heroicons/react/16/solid";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 

@@ -69,7 +69,7 @@ const Demo = ({ class: className }: DemoProps) => {
           buildLog={buildLog}
           executables={executables}
         />
-        {downloads?.map((download, i) => (
+        {downloads?.map((download) => (
           <Badge
             key={download.token}
             className={cn(

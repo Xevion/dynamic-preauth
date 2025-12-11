@@ -35,7 +35,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     };
 
     let json_data = serde_json::to_string(&key_data)?;
-    write!(f, "{}", json_data.to_string())?;
+    write!(f, "{}", json_data)?;
 
     Ok(())
 }

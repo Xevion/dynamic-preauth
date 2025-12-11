@@ -1,5 +1,5 @@
 import { withBackend } from "@/util";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import useWebSocket, { ReadyState } from "react-use-websocket";
 
 export interface Download {
