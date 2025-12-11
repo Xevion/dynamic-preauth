@@ -320,7 +320,7 @@ pub async fn notify(req: &mut Request, res: &mut Response) {
     let target_session = store
         .sessions
         .iter_mut()
-        .find(|(_, session)| session.downloads.iter().find(|d| d.token == key).is_some());
+        .find(|(_, session)| session.downloads.iter().any(|d| d.token == key));
 
     match target_session {
         Some((_, session)) => {
@@ -373,10 +373,7 @@ fn get_session_id(req: &Request, depot: &Depot) -> Option<u32> {
 
     // Otherwise, just use whatever the Cookie might have
     match req.cookie("Session") {
-        Some(cookie) => match cookie.value().parse::<u32>() {
-            Ok(id) => Some(id),
-            _ => None,
-        },
+        Some(cookie) => cookie.value().parse::<u32>().ok(),
         None => {
             tracing::warn!("Session was not provided in cookie or depot");
             None

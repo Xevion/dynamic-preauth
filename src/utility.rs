@@ -7,7 +7,7 @@ pub(crate) fn search(buf: &[u8], pattern: &[u8], start_index: usize) -> Option<u
     }
 
     // If the pattern is empty
-    if pattern.len() == 0 {
+    if pattern.is_empty() {
         return None;
     }
 

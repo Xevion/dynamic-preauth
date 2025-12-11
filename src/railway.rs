@@ -203,6 +203,8 @@ pub async fn fetch_build_logs() -> Result<crate::models::BuildLogs> {
                 serde_json::from_value::<Vec<BuildLogEntry>>(build_logs_value.clone())
             {
                 let mut filtered_logs = Vec::new();
+                let starting_container_pattern =
+                    regex::Regex::new(r"(?i)Starting\s+Container").unwrap();
 
                 for entry in build_logs {
                     // Check if we should stop at this message
@@ -210,8 +212,6 @@ pub async fn fetch_build_logs() -> Result<crate::models::BuildLogs> {
                         // For "Build time" messages, include them
                         // For "Starting Container" messages, stop before them
                         let clean_message = strip_ansi_codes(&entry.message);
-                        let starting_container_pattern =
-                            regex::Regex::new(r"(?i)Starting\s+Container").unwrap();
 
                         if starting_container_pattern.is_match(&clean_message) {
                             // Stop before "Starting Container" message

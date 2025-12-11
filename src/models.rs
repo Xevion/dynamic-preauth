@@ -47,7 +47,7 @@ impl Session {
                 "{}-{:08x}{}{}",
                 exe.name,
                 token,
-                if exe.extension.len() > 0 { "." } else { "" },
+                if !exe.extension.is_empty() { "." } else { "" },
                 exe.extension
             ),
             last_used: chrono::Utc::now(),
@@ -55,7 +55,7 @@ impl Session {
         };
 
         self.downloads.push(download);
-        return self.downloads.last().unwrap();
+        self.downloads.last().unwrap()
     }
 
     // Delete a download from the session
@@ -81,8 +81,8 @@ impl Session {
         let result = tx.send(Ok(Message::text(serde_json::to_string(&message).unwrap())));
 
         match result {
-            Ok(_) => return Ok(()),
-            Err(e) => return Err(anyhow::anyhow!("Error sending message: {}", e)),
+            Ok(_) => Ok(()),
+            Err(e) => Err(anyhow::anyhow!("Error sending message: {}", e)),
         }
     }
 
@@ -124,7 +124,7 @@ impl State {
     }
 
     pub fn add_executable(&mut self, exe_type: &str, exe_path: &str) {
-        let data = std::fs::read(&exe_path).expect("Unable to read file");
+        let data = std::fs::read(exe_path).expect("Unable to read file");
 
         let pattern = "a".repeat(1024);
         let key_start = search(&data, pattern.as_bytes(), 0).unwrap();
@@ -142,8 +142,8 @@ impl State {
             filename: path.file_name().unwrap().to_str().unwrap().to_string(),
             name: name.to_string(),
             extension: extension.to_string(),
-            key_start: key_start,
-            key_end: key_end,
+            key_start,
+            key_end,
         };
 
         self.executables.insert(exe_type.to_string(), exe);
@@ -183,7 +183,7 @@ impl State {
                 .build(),
         );
 
-        return id;
+        id
     }
 
     pub fn executable_json(&self) -> Vec<ExecutableJson> {
@@ -197,7 +197,7 @@ impl State {
             });
         }
 
-        return executables;
+        executables
     }
 }
 
@@ -222,12 +222,12 @@ impl Executable {
 
         // If the new key is shorter than the old key, we just write over the remaining data
         if new_key.len() < self.key_end - self.key_start {
-            for i in self.key_start + new_key.len()..self.key_end {
-                data[i] = b' ';
+            for item in data.iter_mut().take(self.key_end).skip(self.key_start + new_key.len()) {
+                *item = b' ';
             }
         }
 
-        return data;
+        data
     }
 }
 
