@@ -1,20 +1,25 @@
-[package]
-name = "dynamic-preauth"
+[workspace]
+resolver = "2"
+members = ["backend", "demo"]
+
+[workspace.package]
 version = "0.1.0"
 edition = "2021"
 
-[dependencies]
+[workspace.dependencies]
 anyhow = "1.0.95"
 chrono = { version = "0.4.39", features = ["serde"] }
 dotenvy = "0.15.7"
 envy = "0.4.2"
 futures-util = "0.3.31"
+hex = "0.4.3"
 rand = "0.8.5"
 regex = "1.10"
-reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+reqwest = { version = "0.12", default-features = false }
 salvo = { version = "0.74.3", features = ["affix-state", "catch-panic", "cors", "logging", "serve-static", "test", "websocket"] }
 serde = { version = "1.0.216", features = ["derive"] }
 serde_json = "1.0.134"
+sha2 = "0.10.8"
 tokio = { version = "1", features = ["macros"] }
 tokio-stream = "0.1.17"
 tracing = "0.1"

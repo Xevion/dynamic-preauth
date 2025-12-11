@@ -1,0 +1,25 @@
+[package]
+name = "dynamic-preauth"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "dynamic-preauth"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+chrono.workspace = true
+dotenvy.workspace = true
+envy.workspace = true
+futures-util.workspace = true
+rand.workspace = true
+regex.workspace = true
+reqwest = { workspace = true, features = ["json", "rustls-tls"] }
+salvo.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+tokio-stream.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true

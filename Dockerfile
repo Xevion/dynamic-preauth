@@ -7,9 +7,10 @@ WORKDIR /app
 
 # --- Demo Planner Stage ---
 FROM chef AS demo-planner
-COPY demo/Cargo.toml demo/Cargo.lock* demo/build.rs ./
-COPY demo/src ./src
-RUN cargo chef prepare --recipe-path recipe.json
+COPY Cargo.toml Cargo.lock ./
+COPY backend ./backend
+COPY demo ./demo
+RUN cargo chef prepare --recipe-path recipe.json --bin demo
 
 # --- Demo Builder Stage ---
 FROM chef AS demo-builder
@@ -24,18 +25,19 @@ RUN rustup target add x86_64-pc-windows-gnu x86_64-unknown-linux-gnu
 
 # Copy recipe and cook dependencies
 COPY --from=demo-planner /app/recipe.json recipe.json
-RUN cargo chef cook --release --target x86_64-unknown-linux-gnu --recipe-path recipe.json
-RUN cargo chef cook --release --target x86_64-pc-windows-gnu --recipe-path recipe.json
+RUN cargo chef cook --release --target x86_64-unknown-linux-gnu --recipe-path recipe.json --bin demo
+RUN cargo chef cook --release --target x86_64-pc-windows-gnu --recipe-path recipe.json --bin demo
 
 # Copy source and build
-COPY demo/Cargo.toml demo/Cargo.lock* demo/build.rs ./
-COPY demo/src ./src
+COPY Cargo.toml Cargo.lock ./
+COPY backend ./backend
+COPY demo ./demo
 
 ARG RAILWAY_PUBLIC_DOMAIN
 ENV RAILWAY_PUBLIC_DOMAIN=${RAILWAY_PUBLIC_DOMAIN}
 
-RUN cargo build --release --target x86_64-unknown-linux-gnu
-RUN cargo build --release --target x86_64-pc-windows-gnu
+RUN cargo build --release --target x86_64-unknown-linux-gnu --bin demo
+RUN cargo build --release --target x86_64-pc-windows-gnu --bin demo
 
 # Strip binaries
 RUN strip target/x86_64-unknown-linux-gnu/release/demo
@@ -43,7 +45,8 @@ RUN strip target/x86_64-unknown-linux-gnu/release/demo
 # --- Server Planner Stage ---
 FROM chef AS server-planner
 COPY Cargo.toml Cargo.lock ./
-COPY src ./src
+COPY backend ./backend
+COPY demo ./demo
 RUN cargo chef prepare --recipe-path recipe.json
 
 # --- Server Builder Stage ---
@@ -55,8 +58,9 @@ RUN cargo chef cook --release --recipe-path recipe.json
 
 # Copy source and build
 COPY Cargo.toml Cargo.lock ./
-COPY src ./src
-RUN cargo build --release
+COPY backend ./backend
+COPY demo ./demo
+RUN cargo build --release --bin dynamic-preauth
 
 # Strip binary
 RUN strip target/release/dynamic-preauth

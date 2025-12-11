@@ -7,27 +7,29 @@ port := "5800"
 default:
     @just --list
 
-# Run all checks (format, clippy, frontend)
-check: format-check lint frontend-check
+# Run all checks (matches quality workflow)
+check: format-check cargo-check lint audit frontend-check frontend-build
     @echo "All checks passed!"
 
 # Format all Rust code
 format:
     @echo "Formatting code..."
     cargo fmt --all
-    cargo fmt --manifest-path demo/Cargo.toml --all
 
 # Check formatting without modifying
 format-check:
     @echo "Checking formatting..."
     cargo fmt --all -- --check
-    cargo fmt --manifest-path demo/Cargo.toml --all -- --check
+
+# Check code without building
+cargo-check:
+    @echo "Running cargo check..."
+    cargo check --workspace --all-targets --all-features
 
 # Lint with clippy
 lint:
     @echo "Running clippy..."
-    cargo clippy --all-targets --all-features -- -D warnings
-    cargo clippy --manifest-path demo/Cargo.toml --all-targets --all-features -- -D warnings
+    cargo clippy --workspace --all-targets --all-features -- -D warnings
 
 # Frontend type check
 frontend-check:
@@ -52,18 +54,12 @@ run:
 # Build release
 build:
     @echo "Building release..."
-    cargo build --release
-
-# Build demo executables
-build-demo:
-    @echo "Building demo executables..."
-    cargo build --manifest-path demo/Cargo.toml --release
+    cargo build --workspace --release
 
 # Security audit
 audit:
     @echo "Running security audit..."
     cargo audit
-    cargo audit --file demo/Cargo.lock
 
 # Build Docker image
 docker-build:
@@ -98,7 +94,6 @@ docker-clean: docker-stop
 clean:
     @echo "Cleaning cargo artifacts..."
     cargo clean
-    cargo clean --manifest-path demo/Cargo.toml
 
 # Full CI pipeline
 ci: format-check lint frontend-check build docker-build

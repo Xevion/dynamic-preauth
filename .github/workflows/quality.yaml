@@ -18,10 +18,7 @@ jobs:
           components: rustfmt
 
       - name: Check formatting
-        run: cargo fmt -- --check
-
-      - name: Check demo formatting
-        run: cargo fmt --manifest-path demo/Cargo.toml -- --check
+        run: cargo fmt --all -- --check
 
   clippy:
     name: Clippy
@@ -37,10 +34,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Run clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
-
-      - name: Run clippy on demo
-        run: cargo clippy --manifest-path demo/Cargo.toml --all-targets --all-features -- -D warnings
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
 
   audit:
     name: Audit
@@ -52,9 +46,6 @@ jobs:
 
       - name: Run audit
         run: cargo audit
-
-      - name: Run audit on demo
-        run: cargo audit --file demo/Cargo.lock
 
   check:
     name: Check
@@ -68,10 +59,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Run check
-        run: cargo check --all-targets --all-features
-
-      - name: Run check on demo
-        run: cargo check --manifest-path demo/Cargo.toml --all-targets --all-features
+        run: cargo check --workspace --all-targets --all-features
 
   frontend:
     name: Frontend
