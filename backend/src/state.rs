@@ -42,12 +42,8 @@ impl State {
             .unwrap_or_default()
             .to_string();
 
-        let key_start =
-            Executable::search_pattern(&data, pattern.as_bytes(), 0).ok_or_else(|| {
-                AppError::KeyPatternNotFound {
-                    name: name.clone(),
-                }
-            })?;
+        let key_start = Executable::search_pattern(&data, pattern.as_bytes(), 0)
+            .ok_or_else(|| AppError::KeyPatternNotFound { name: name.clone() })?;
         let key_end = key_start + pattern.len();
 
         let extension = path

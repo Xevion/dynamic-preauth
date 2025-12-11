@@ -20,6 +20,7 @@ if (
 // https://astro.build/config
 
 export default defineConfig({
+  outDir: "../public",
   build: {
     assets: "assets",
   },

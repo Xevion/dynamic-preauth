@@ -1,0 +1,36 @@
+# Bacon configuration for dynamic-preauth
+
+default_job = "check"
+
+[jobs.check]
+command = ["cargo", "check", "--workspace", "--all-targets", "--all-features", "--color", "always"]
+need_stdout = false
+
+[jobs.clippy]
+command = ["cargo", "clippy", "--workspace", "--all-targets", "--all-features", "--color", "always", "--", "-D", "warnings"]
+need_stdout = false
+
+[jobs.test]
+command = ["cargo", "test", "--workspace", "--color", "always"]
+need_stdout = true
+
+[jobs.run]
+command = ["cargo", "run", "--bin", "dynamic-preauth", "--color", "always"]
+need_stdout = true
+on_success = "back"
+
+[jobs.doc]
+command = ["cargo", "doc", "--workspace", "--all-features", "--no-deps", "--color", "always"]
+need_stdout = false
+
+[keybindings]
+# Use 'c' to switch to check job
+c = "job:check"
+# Use 'l' to switch to clippy job
+l = "job:clippy"
+# Use 't' to switch to test job
+t = "job:test"
+# Use 'r' to switch to run job
+r = "job:run"
+# Use 'd' to switch to doc job
+d = "job:doc"

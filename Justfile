@@ -1,3 +1,7 @@
+# Justfile for dynamic-preauth
+# Uses bacon for Rust watching, pnpm for frontend
+# Frontend builds to ./public, which backend serves as static files
+
 # Variables
 image_name := "dynamic-preauth"
 container_name := "dynamic-preauth-dev"
@@ -41,15 +45,26 @@ frontend-build:
     @echo "Building frontend..."
     pnpm --dir frontend build
 
-# Development server with hot reload
-dev:
-    @echo "Starting development server..."
-    cargo watch -x run --bin backend
+# Development server with hot reload (backend + ensures frontend is built)
+dev: frontend-build
+    @echo "Starting backend development server with bacon..."
+    @echo "Frontend is served from ./public (built from frontend/)"
+    bacon run
+
+# Watch backend only (for when frontend is already built)
+dev-backend:
+    @echo "Starting backend watch with bacon..."
+    bacon run
+
+# Watch and serve frontend only
+dev-frontend:
+    @echo "Starting frontend dev server..."
+    pnpm --dir frontend dev
 
 # Simple development run (no hot reload)
 run:
     @echo "Starting server..."
-    cargo run --bin backend
+    cargo run --bin dynamic-preauth
 
 # Build release
 build:
@@ -61,8 +76,8 @@ audit:
     @echo "Running security audit..."
     cargo audit
 
-# Build Docker image
-docker-build:
+# Build Docker image (ensures frontend is built first)
+docker-build: frontend-build
     @echo "Building Docker image..."
     docker build -t {{image_name}}:latest .
 
@@ -99,6 +114,8 @@ clean:
 ci: format-check lint frontend-check build docker-build
     @echo "CI pipeline completed!"
 
-# Quick development check
-quick: format lint
+# Quick development check (format + clippy)
+quick: format
+    @echo "Running quick clippy check..."
+    cargo clippy --workspace --all-targets --all-features -- -D warnings
     @echo "Quick check completed!"
