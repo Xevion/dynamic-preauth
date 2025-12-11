@@ -1,10 +1,11 @@
 use std::collections::HashMap;
-use std::path;
+use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
 
 use salvo::{http::cookie::Cookie, Response};
 use tokio::sync::Mutex;
 
+use crate::errors::{AppError, Result};
 use crate::models::{BuildLogs, Executable, ExecutableJson, Session};
 
 pub static STORE: LazyLock<Mutex<State>> = LazyLock::new(|| Mutex::new(State::new()));
@@ -27,30 +28,49 @@ impl State {
         }
     }
 
-    pub fn add_executable(&mut self, exe_type: &str, exe_path: &str) {
-        let data = std::fs::read(exe_path).expect("Unable to read file");
+    pub fn add_executable(&mut self, exe_type: &str, exe_path: &str) -> Result<()> {
+        let path = Path::new(exe_path);
+
+        let data = std::fs::read(path).map_err(|_| AppError::ExecutableNotFound {
+            path: PathBuf::from(exe_path),
+        })?;
 
         let pattern = "a".repeat(1024);
-        let key_start = Executable::search_pattern(&data, pattern.as_bytes(), 0).unwrap();
+        let name = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or_default()
+            .to_string();
+
+        let key_start =
+            Executable::search_pattern(&data, pattern.as_bytes(), 0).ok_or_else(|| {
+                AppError::KeyPatternNotFound {
+                    name: name.clone(),
+                }
+            })?;
         let key_end = key_start + pattern.len();
 
-        let path = path::Path::new(&exe_path);
-        let name = path.file_stem().unwrap().to_str().unwrap();
-        let extension = match path.extension() {
-            Some(s) => s.to_str().unwrap(),
-            None => "",
-        };
+        let extension = path
+            .extension()
+            .and_then(|s| s.to_str())
+            .unwrap_or_default()
+            .to_string();
 
         let exe = Executable {
             data,
-            filename: path.file_name().unwrap().to_str().unwrap().to_string(),
-            name: name.to_string(),
-            extension: extension.to_string(),
+            filename: path
+                .file_name()
+                .and_then(|s| s.to_str())
+                .unwrap_or_default()
+                .to_string(),
+            name,
+            extension,
             key_start,
             key_end,
         };
 
         self.executables.insert(exe_type.to_string(), exe);
+        Ok(())
     }
 
     pub async fn new_session(&mut self, res: &mut Response) -> u32 {

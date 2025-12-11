@@ -44,12 +44,12 @@ frontend-build:
 # Development server with hot reload
 dev:
     @echo "Starting development server..."
-    cargo watch -x run
+    cargo watch -x run --bin backend
 
 # Simple development run (no hot reload)
 run:
     @echo "Starting server..."
-    cargo run
+    cargo run --bin backend
 
 # Build release
 build:

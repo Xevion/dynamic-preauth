@@ -60,9 +60,16 @@ async fn main() {
         }
     }
 
-    store.add_executable("Windows", "./demo.exe");
-    store.add_executable("Linux", "./demo-linux");
-    // store.add_executable("MacOS", "./demo-macos");
+    for (exe_type, exe_path) in [
+        ("Windows", "./demo.exe"),
+        ("Linux", "./demo-linux"),
+        // ("MacOS", "./demo-macos"),
+    ] {
+        if let Err(e) = store.add_executable(exe_type, exe_path) {
+            tracing::error!("{}", e);
+            std::process::exit(1);
+        }
+    }
 
     drop(store); // critical: Drop the lock to avoid deadlock, otherwise the server will hang
 
