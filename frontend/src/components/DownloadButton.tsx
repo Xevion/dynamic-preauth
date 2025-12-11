@@ -9,10 +9,10 @@ import {
   MenuSeparator,
 } from "@headlessui/react";
 import {
-  ArrowDownTrayIcon,
   BeakerIcon,
   ChevronDownIcon,
 } from "@heroicons/react/16/solid";
+import { FaWindows, FaApple, FaLinux } from "react-icons/fa";
 import { useRef } from "react";
 
 type DownloadButtonProps = {
@@ -36,6 +36,34 @@ function getSystemType(): SystemType | null {
   }
 }
 
+function getPlatformIcon(id: string, className?: string) {
+  const platformId = id.toLowerCase();
+  switch (platformId) {
+    case "windows":
+      return <FaWindows className={className} />;
+    case "macos":
+      return <FaApple className={className} />;
+    case "linux":
+      return <FaLinux className={className} />;
+    default:
+      return null;
+  }
+}
+
+function getPlatformDisplayName(id: string): string {
+  const platformId = id.toLowerCase();
+  switch (platformId) {
+    case "windows":
+      return "Windows";
+    case "macos":
+      return "macOS";
+    case "linux":
+      return "Linux";
+    default:
+      return id;
+  }
+}
+
 export default function DownloadButton({
   disabled,
   executables,
@@ -46,6 +74,10 @@ export default function DownloadButton({
   function getExecutable(id: string) {
     return executables?.find((e) => e.id.toLowerCase() === id.toLowerCase());
   }
+
+  const detectedPlatform = getSystemType();
+  const platformExecutable = detectedPlatform ? getExecutable(detectedPlatform) : null;
+  const canAutoDownload = platformExecutable != null;
 
   async function handleDownload(id: string) {
     const executable = getExecutable(id);
@@ -59,16 +91,8 @@ export default function DownloadButton({
   }
 
   function handleDownloadAutomatic() {
-    const systemType = getSystemType();
-
-    // If the system type is unknown/unavailable, open the menu for manual selection
-    if (systemType == null || getExecutable(systemType) == null) {
-      menuRef.current?.click();
-    }
-
-    // Otherwise, download the executable automatically
-    else {
-      handleDownload(systemType);
+    if (canAutoDownload && detectedPlatform) {
+      handleDownload(detectedPlatform);
     }
   }
 
@@ -83,14 +107,17 @@ export default function DownloadButton({
       )}
     >
       <Button
-        onClick={handleDownloadAutomatic}
+        onClick={canAutoDownload ? handleDownloadAutomatic : undefined}
         suppressHydrationWarning
-        disabled={disabled}
+        disabled={disabled || !canAutoDownload}
         className={cn("pl-3 font-semibold pr-2.5", {
-          "hover:bg-white/5": !disabled,
+          "hover:bg-white/5 cursor-pointer": !disabled && canAutoDownload,
+          "cursor-default": !canAutoDownload,
         })}
       >
-        Download
+        {canAutoDownload && detectedPlatform
+          ? `Download for ${getPlatformDisplayName(detectedPlatform)}`
+          : "Download"}
       </Button>
       <Menu>
         <MenuButton
@@ -115,8 +142,8 @@ export default function DownloadButton({
                 onClick={() => handleDownload(executable.id)}
               >
                 <div className="flex items-center gap-1.5">
-                  <ArrowDownTrayIcon className="size-4 fill-white/40" />
-                  {executable.id}
+                  {getPlatformIcon(executable.id, "size-4 fill-white/40")}
+                  {getPlatformDisplayName(executable.id)}
                 </div>
                 <div className="text-xs text-zinc-500">
                   {(executable.size / 1024 / 1024).toFixed(1)} MiB
