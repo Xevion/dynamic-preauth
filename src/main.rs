@@ -1,5 +1,4 @@
 use std::sync::LazyLock;
-use std::{env, vec};
 
 use futures_util::{FutureExt, StreamExt};
 use models::{IncomingMessage, OutgoingMessage};
@@ -17,10 +16,12 @@ use tokio::sync::{mpsc, Mutex};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tracing_subscriber::EnvFilter;
 
+use crate::config::Config;
 use crate::models::State;
 
 static STORE: LazyLock<Mutex<State>> = LazyLock::new(|| Mutex::new(State::new()));
 
+mod config;
 mod models;
 mod railway;
 mod utility;
@@ -385,19 +386,17 @@ fn get_session_id(req: &Request, depot: &Depot) -> Option<u32> {
 
 #[tokio::main]
 async fn main() {
-    // Load environment variables from .env file
-    dotenv::dotenv().ok();
+    // Load environment variables from .env file (development only)
+    #[cfg(debug_assertions)]
+    dotenvy::dotenv().ok();
 
-    let port = std::env::var("PORT").unwrap_or_else(|_| "5800".to_string());
-    let addr = format!("0.0.0.0:{}", port);
+    // Parse configuration from environment
+    let config: Config = envy::from_env().expect("Failed to parse environment configuration");
+
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::new(format!(
             "info,dynamic_preauth={}",
-            // Only log our message in debug mode
-            match cfg!(debug_assertions) {
-                true => "debug",
-                false => "info",
-            }
+            if cfg!(debug_assertions) { "debug" } else { "info" }
         )))
         .init();
 
@@ -405,28 +404,14 @@ async fn main() {
     let mut store = STORE.lock().await;
 
     // Check if we are deployed on Railway
-    let is_railway = env::var("RAILWAY_PROJECT_ID").is_ok();
-    if is_railway {
-        // In debug mode, we might not have RAILWAY_DEPLOYMENT_ID set
-        let deployment_id = if cfg!(debug_assertions) {
-            env::var("RAILWAY_DEPLOYMENT_ID").unwrap_or_else(|_| "latest".to_string())
-        } else {
-            env::var("RAILWAY_DEPLOYMENT_ID").unwrap()
-        };
-
-        let build_logs_url = format!(
-            "https://railway.com/project/{}/service/{}?environmentId={}&id={}#build",
-            env::var("RAILWAY_PROJECT_ID").unwrap(),
-            env::var("RAILWAY_SERVICE_ID").unwrap(),
-            env::var("RAILWAY_ENVIRONMENT_ID").unwrap(),
-            deployment_id
-        );
-
-        tracing::info!("Build logs available here: {}", build_logs_url);
-        store.build_log_url = Some(build_logs_url);
+    if config.railway.is_railway() {
+        if let Some(build_logs_url) = config.railway.build_logs_url() {
+            tracing::info!("Build logs available here: {}", build_logs_url);
+            store.build_log_url = Some(build_logs_url);
+        }
 
         // Try to fetch actual build logs using Railway API
-        if env::var("RAILWAY_TOKEN").is_ok() {
+        if config.railway.has_token() {
             match crate::railway::fetch_build_logs().await {
                 Ok(build_logs) => {
                     tracing::info!(
@@ -450,19 +435,7 @@ async fn main() {
 
     drop(store); // critical: Drop the lock to avoid deadlock, otherwise the server will hang
 
-    // Allow all origins if: debug mode or RAILWAY_PUBLIC_DOMAIN is not set
-    let origin = if cfg!(debug_assertions) | env::var_os("RAILWAY_PUBLIC_DOMAIN").is_none() {
-        "*".to_string()
-    } else {
-        format!(
-            "https://{}",
-            env::var_os("RAILWAY_PUBLIC_DOMAIN")
-                .unwrap()
-                .to_str()
-                .unwrap()
-        )
-    };
-
+    let origin = config.railway.cors_origin();
     let cors = Cors::new()
         .allow_origin(&origin)
         .allow_methods(vec![Method::GET])
@@ -495,6 +468,6 @@ async fn main() {
 
     let service = Service::new(router).hoop(cors).hoop(Logger::new());
 
-    let acceptor = TcpListener::new(addr).bind().await;
+    let acceptor = TcpListener::new(config.bind_addr()).bind().await;
     Server::new(acceptor).serve(service).await;
 }
