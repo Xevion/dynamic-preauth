@@ -45,20 +45,63 @@ frontend-build:
     @echo "Building frontend..."
     pnpm --dir frontend build
 
-# Development server with hot reload (backend + ensures frontend is built)
-dev: frontend-build
-    @echo "Starting backend development server with bacon..."
-    @echo "Frontend is served from ./public (built from frontend/)"
-    bacon run
+# Build demo executables (debug mode for faster dev builds)
+build-demo:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    echo "Building demo executables..."
+
+    # Always build Linux demo
+    echo "Building Linux demo..."
+    cargo build --bin demo
+    cp target/debug/demo ./demo-linux
+    echo "  [OK] Linux demo built"
+
+    # Try to build Windows demo if cross-compilation is available
+    if rustup target list --installed | grep -q x86_64-pc-windows-gnu; then
+        echo "Building Windows demo..."
+        if cargo build --bin demo --target x86_64-pc-windows-gnu 2>/dev/null; then
+            cp target/x86_64-pc-windows-gnu/debug/demo.exe ./demo.exe
+            echo "  [OK] Windows demo built"
+        else
+            echo "  [!] Windows build failed (mingw-w64 toolchain may not be installed)"
+            echo "      Continuing without Windows demo..."
+        fi
+    else
+        echo "  [SKIP] Windows target not installed"
+        echo "         Install with: rustup target add x86_64-pc-windows-gnu"
+        echo "         Also requires: sudo apt install mingw-w64"
+    fi
+
+    echo "Demo executables ready!"
+
+# Development server with hot reload (backend + frontend using Overmind)
+dev: build-demo
+    @echo "Starting development servers with Overmind..."
+    @echo ""
+    @echo "Backend will run on:  http://localhost:5800"
+    @echo "Frontend will run on: http://localhost:4321"
+    @echo ""
+    @echo "Overmind multiplexes logs with prefixes:"
+    @echo "  [backend]  - Bacon watching Rust backend"
+    @echo "  [frontend] - Astro dev server"
+    @echo ""
+    @echo "Overmind shortcuts:"
+    @echo "  Ctrl+C     - Stop all processes"
+    @echo "  'overmind connect <process>' - Attach to a specific process"
+    @echo ""
+    overmind start -f Procfile.dev
 
 # Watch backend only (for when frontend is already built)
-dev-backend:
+dev-backend: build-demo
     @echo "Starting backend watch with bacon..."
     bacon run
 
 # Watch and serve frontend only
 dev-frontend:
     @echo "Starting frontend dev server..."
+    @echo "Make sure the backend is running on port 5800!"
     pnpm --dir frontend dev
 
 # Simple development run (no hot reload)
@@ -119,3 +162,30 @@ quick: format
     @echo "Running quick clippy check..."
     cargo clippy --workspace --all-targets --all-features -- -D warnings
     @echo "Quick check completed!"
+
+# Verify dev setup is ready (builds demo executables and checks dependencies)
+smoke: build-demo
+    @echo "Verifying development setup..."
+    @echo ""
+    @echo "Checking for overmind (required for 'just dev')..."
+    @command -v overmind >/dev/null 2>&1 || { echo "  [!] overmind not found. Install from: https://github.com/DarthSim/overmind#installation"; exit 1; }
+    @echo "  [OK] overmind found"
+    @echo ""
+    @echo "Checking for bacon..."
+    @command -v bacon >/dev/null 2>&1 || { echo "  [!] bacon not found. Install with: cargo install bacon"; exit 1; }
+    @echo "  [OK] bacon found"
+    @echo ""
+    @echo "Checking for pnpm..."
+    @command -v pnpm >/dev/null 2>&1 || { echo "  [!] pnpm not found. Install from: https://pnpm.io/installation"; exit 1; }
+    @echo "  [OK] pnpm found"
+    @echo ""
+    @echo "Checking demo executables..."
+    @test -f ./demo-linux || { echo "  [!] demo-linux not found"; exit 1; }
+    @echo "  [OK] demo-linux exists"
+    @if [ -f ./demo.exe ]; then \
+        echo "  [OK] demo.exe exists"; \
+    else \
+        echo "  [SKIP] demo.exe not found (Windows builds not available)"; \
+    fi
+    @echo ""
+    @echo "[OK] Development setup is ready! Run 'just dev' to start."

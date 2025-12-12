@@ -3,3 +3,4 @@
 demo-*
 /public
 .env
+.overmind.sock

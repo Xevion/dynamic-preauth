@@ -1,0 +1,5 @@
+# Procfile for Overmind development workflow
+# Start with: overmind start -f Procfile.dev
+
+backend: PORT=5800 bacon run --headless
+frontend: pnpm --dir frontend dev

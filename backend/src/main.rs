@@ -66,6 +66,16 @@ async fn main() {
         // ("MacOS", "./demo-macos"),
     ] {
         if let Err(e) = store.add_executable(exe_type, exe_path) {
+            // In debug mode, allow missing Windows executable for dev convenience
+            if cfg!(debug_assertions) && exe_type == "Windows" {
+                tracing::warn!(
+                    "Windows executable not found at {} (skipping - cross-compilation not set up)",
+                    exe_path
+                );
+                tracing::warn!("To enable Windows builds: rustup target add x86_64-pc-windows-gnu && sudo apt install mingw-w64");
+                continue;
+            }
+
             tracing::error!("{}", e);
             std::process::exit(1);
         }
@@ -105,6 +115,15 @@ async fn main() {
 
     let service = Service::new(router).hoop(cors).hoop(Logger::new());
 
-    let acceptor = TcpListener::new(config.bind_addr()).bind().await;
+    let bind_addr = config.bind_addr();
+    tracing::info!("Server starting on http://{}", bind_addr);
+    tracing::info!("WebSocket endpoint: ws://{}/ws", bind_addr);
+
+    if cfg!(debug_assertions) {
+        tracing::info!("Development mode - CORS allows all origins");
+        tracing::info!("Access the app at http://localhost:4321 (Astro dev server)");
+    }
+
+    let acceptor = TcpListener::new(&bind_addr).bind().await;
     Server::new(acceptor).serve(service).await;
 }
