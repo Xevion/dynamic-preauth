@@ -1,5 +1,6 @@
 import type { Executable } from "@/components/useSocket";
-import { cn, withBackend } from "@/util";
+import MobileWarningModal from "@/components/MobileWarningModal";
+import { cn, isMobile, withBackend } from "@/util";
 import {
   Button,
   Menu,
@@ -13,7 +14,9 @@ import {
   ChevronDownIcon,
 } from "@heroicons/react/16/solid";
 import { FaWindows, FaApple, FaLinux } from "react-icons/fa";
-import { useRef } from "react";
+import { useRef, useState } from "react";
+
+const MOBILE_WARNING_KEY = "mobile-warning-acknowledged";
 
 type DownloadButtonProps = {
   disabled?: boolean;
@@ -70,14 +73,43 @@ export default function DownloadButton({
   buildLog,
 }: DownloadButtonProps) {
   const menuRef = useRef<HTMLButtonElement>(null);
+  const [showMobileWarning, setShowMobileWarning] = useState(false);
+  const [mobileAcknowledged, setMobileAcknowledged] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return sessionStorage.getItem(MOBILE_WARNING_KEY) === "true";
+  });
 
   function getExecutable(id: string) {
     return executables?.find((e) => e.id.toLowerCase() === id.toLowerCase());
   }
 
-  const detectedPlatform = getSystemType();
+  const mobile = isMobile();
+  const detectedPlatform = mobile ? null : getSystemType();
   const platformExecutable = detectedPlatform ? getExecutable(detectedPlatform) : null;
   const canAutoDownload = platformExecutable != null;
+
+  function acknowledgeMobileWarning() {
+    sessionStorage.setItem(MOBILE_WARNING_KEY, "true");
+    setMobileAcknowledged(true);
+  }
+
+  function handleMobileButtonClick() {
+    if (!mobileAcknowledged) {
+      setShowMobileWarning(true);
+    } else {
+      menuRef.current?.click();
+    }
+  }
+
+  function handleMobileWarningClose() {
+    setShowMobileWarning(false);
+  }
+
+  function handleMobileWarningContinue() {
+    acknowledgeMobileWarning();
+    setShowMobileWarning(false);
+    menuRef.current?.click();
+  }
 
   async function handleDownload(id: string) {
     const executable = getExecutable(id);
@@ -97,39 +129,65 @@ export default function DownloadButton({
   }
 
   return (
-    <div
-      className={cn(
-        "[&>*]:py-1 overflow-clip transition-[background-color] text-sm/6 flex items-center shadow-inner align-middle text-white focus:outline-none data-[focus]:outline-1 data-[focus]:outline-white",
-        !disabled
-          ? "divide-white/[0.2] shadow-white/10 bg-emerald-800 data-[hover]:bg-emerald-700 data-[open]:bg-emerald-700"
-          : "divide-white/[0.1] shadow-white/5 animate-pulse-dark data-[hover]:bg-[#064e3b] cursor-wait",
-        "rounded-md divide-x h-full rounded-l-md"
-      )}
-    >
-      <Button
-        onClick={canAutoDownload ? handleDownloadAutomatic : undefined}
-        suppressHydrationWarning
-        disabled={disabled || !canAutoDownload}
-        className={cn("pl-3 font-semibold pr-2.5", {
-          "hover:bg-white/5 cursor-pointer": !disabled && canAutoDownload,
-          "cursor-default": !canAutoDownload,
-        })}
+    <>
+      <MobileWarningModal
+        open={showMobileWarning}
+        onClose={handleMobileWarningClose}
+        onContinue={handleMobileWarningContinue}
+      />
+      <div
+        className={cn(
+          "[&>*]:py-1 overflow-clip transition-[background-color] text-sm/6 flex items-center shadow-inner align-middle text-white focus:outline-none data-[focus]:outline-1 data-[focus]:outline-white",
+          !disabled
+            ? "divide-white/[0.2] shadow-white/10 bg-emerald-800 data-[hover]:bg-emerald-700 data-[open]:bg-emerald-700"
+            : "divide-white/[0.1] shadow-white/5 animate-pulse-dark data-[hover]:bg-[#064e3b] cursor-wait",
+          "rounded-md divide-x h-full rounded-l-md"
+        )}
       >
-        {canAutoDownload && detectedPlatform
-          ? `Download for ${getPlatformDisplayName(detectedPlatform)}`
-          : "Download"}
-      </Button>
-      <Menu>
-        <MenuButton
-          ref={menuRef}
+        <Button
+          onClick={
+            mobile
+              ? handleMobileButtonClick
+              : canAutoDownload
+                ? handleDownloadAutomatic
+                : undefined
+          }
           suppressHydrationWarning
-          disabled={disabled}
-          className={cn("pl-1.5 text-transparent min-h-8 pr-2", {
-            "hover:bg-white/5": !disabled,
+          disabled={disabled || (!mobile && !canAutoDownload)}
+          className={cn("pl-3 font-semibold pr-2.5", {
+            "hover:bg-white/5 cursor-pointer": !disabled && (mobile || canAutoDownload),
+            "cursor-default": !mobile && !canAutoDownload,
           })}
         >
-          <ChevronDownIcon className="size-4 fill-white/60" />
-        </MenuButton>
+          {mobile
+            ? "Download for Desktop"
+            : canAutoDownload && detectedPlatform
+              ? `Download for ${getPlatformDisplayName(detectedPlatform)}`
+              : "Download"}
+        </Button>
+      <Menu>
+        {mobile && !mobileAcknowledged ? (
+          <button
+            onClick={handleMobileButtonClick}
+            disabled={disabled}
+            className={cn("pl-1.5 min-h-8 pr-2 py-1", {
+              "hover:bg-white/5": !disabled,
+            })}
+          >
+            <ChevronDownIcon className="size-4 fill-white/60" />
+          </button>
+        ) : (
+          <MenuButton
+            ref={menuRef}
+            suppressHydrationWarning
+            disabled={disabled}
+            className={cn("pl-1.5 text-transparent min-h-8 pr-2", {
+              "hover:bg-white/5": !disabled,
+            })}
+          >
+            <ChevronDownIcon className="size-4 fill-white/60" />
+          </MenuButton>
+        )}
         <MenuItems
           transition
           anchor="bottom end"
@@ -169,5 +227,6 @@ export default function DownloadButton({
         </MenuItems>
       </Menu>
     </div>
+    </>
   );
 }

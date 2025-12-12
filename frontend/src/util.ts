@@ -19,6 +19,11 @@ export function os(): Platform | "other" {
   return "other";
 }
 
+export function isMobile(): boolean {
+  const ua = navigator.userAgent.toLowerCase();
+  return /android|iphone|ipad|ipod|webos|blackberry|windows phone/.test(ua);
+}
+
 export function toHex(value: number): string {
   return "0x" + value.toString(16).toUpperCase();
 }
