@@ -2,19 +2,28 @@ import Badge from "@/components/Badge";
 import DownloadButton from "@/components/DownloadButton";
 import Emboldened from "@/components/Emboldened";
 import useSocket from "@/components/useSocket";
+import { useTabCoordination } from "@/components/useTabCoordination";
 import { cn, plural, toHex, type ClassValue } from "@/util";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 type DemoProps = {
   class?: ClassValue;
 };
 
 const Demo = ({ class: className }: DemoProps) => {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const { tryPlayAudio } = useTabCoordination();
 
   const { id, downloads, executables, deleteDownload, buildLog } = useSocket({
     notify: (token) => {
-      audioRef.current!.play();
+      // Create fresh audio element for each notification to avoid browser playback state issues
+      // Reusing the same element can cause the audio indicator to show without sound
+      const audio = new Audio("/notify.wav");
+      audio.volume = 1;
+      tryPlayAudio(audio).finally(() => {
+        // Clean up after playback attempt
+        audio.remove();
+      });
+      // Always highlight in this tab
       highlight(token);
     },
   });
@@ -22,15 +31,6 @@ const Demo = ({ class: className }: DemoProps) => {
 
   const [highlightedToken, setHighlightedToken] = useState<number | null>(null);
   const highlightedTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  useEffect(() => {
-    audioRef.current = new Audio("/notify.wav");
-    audioRef.current.volume = 1;
-    audioRef.current.autoplay = false;
-    return () => {
-      audioRef.current!.remove();
-    };
-  }, []);
 
   function highlight(token: number) {
     setHighlightedToken(token);

@@ -53,86 +53,110 @@ async fn handle_socket(session_id: u32, websocket: WebSocket) {
         });
     tokio::task::spawn(fut_handle_tx_buffer);
 
-    let store = &mut *STORE.lock().await;
+    // Register connection and get its unique ID
+    let connection_id: u64;
+    {
+        let store = &mut *STORE.lock().await;
 
-    // Create the executable message first, borrow issues
-    let executable_message = OutgoingMessage::Executables {
-        executables: store.executable_json(),
-        build_log: if store.build_logs.is_some() {
-            Some("/build-logs".to_string())
-        } else {
-            None
-        },
-    };
+        // Create the executable message first, borrow issues
+        let executable_message = OutgoingMessage::Executables {
+            executables: store.executable_json(),
+            build_log: if store.build_logs.is_some() {
+                Some("/build-logs".to_string())
+            } else {
+                None
+            },
+        };
 
-    let session = store
-        .sessions
-        .get_mut(&session_id)
-        .expect("Unable to get session");
-    session.tx = Some(tx_channel);
+        let session = store
+            .sessions
+            .get_mut(&session_id)
+            .expect("Unable to get session");
 
-    session
-        .send_state()
-        .expect("Failed to buffer state message");
-    session
-        .send_message(executable_message)
-        .expect("Failed to buffer executables message");
+        // Register this connection (multi-tab support)
+        connection_id = session.add_connection(tx_channel);
+
+        // Send initial state only to this new connection; the other tabs already
+        // hold current state and would only get a redundant update from a broadcast.
+        if let Err(e) = session.send_state_to(connection_id) {
+            tracing::warn!("Failed to send initial state: {}", e);
+        }
+        if let Err(e) = session.send_message_to(connection_id, &executable_message) {
+            tracing::warn!("Failed to send executables: {}", e);
+        }
+    }
+
+    tracing::info!(
+        "WebSocket connection {} established for session {}",
+        connection_id,
+        session_id
+    );
 
     // Handle incoming messages
-    let fut = async move {
-        tracing::info!(
-            "WebSocket connection established for session_id: {}",
-            session_id
-        );
-
-        while let Some(result) = socket_rx.next().await {
-            let msg = match result {
-                Ok(msg) => msg,
-                Err(error) => {
-                    tracing::error!(
-                        "WebSocket Error session_id={} error=({})",
-                        session_id,
-                        error
-                    );
-                    break;
-                }
-            };
-
-            if msg.is_close() {
-                tracing::info!("WebSocket closing for Session {}", session_id);
+    while let Some(result) = socket_rx.next().await {
+        let msg = match result {
+            Ok(msg) => msg,
+            Err(error) => {
+                tracing::error!(
+                    "WebSocket Error session_id={} connection_id={} error=({})",
+                    session_id,
+                    connection_id,
+                    error
+                );
                 break;
             }
+        };
 
-            if msg.is_text() {
-                let text = msg.to_str().unwrap();
+        if msg.is_close() {
+            tracing::info!(
+                "WebSocket closing for session {} connection {}",
+                session_id,
+                connection_id
+            );
+            break;
+        }
 
-                // Deserialize
-                match serde_json::from_str::<IncomingMessage>(text) {
-                    Ok(message) => {
-                        tracing::debug!(message = ?message, "Received message");
+        if msg.is_text() {
+            let text = msg.to_str().unwrap();
 
-                        match message {
-                            IncomingMessage::DeleteDownloadToken { id } => {
-                                let store = &mut *STORE.lock().await;
-                                let session = store
-                                    .sessions
-                                    .get_mut(&session_id)
-                                    .expect("Session not found");
+            // Deserialize
+            match serde_json::from_str::<IncomingMessage>(text) {
+                Ok(message) => {
+                    tracing::debug!(message = ?message, "Received message");
 
-                                if session.delete_download(id) {
-                                    session
-                                        .send_state()
-                                        .expect("Failed to buffer state message");
-                                }
+                    match message {
+                        IncomingMessage::DeleteDownloadToken { id } => {
+                            let store = &mut *STORE.lock().await;
+                            let session = store
+                                .sessions
+                                .get_mut(&session_id)
+                                .expect("Session not found");
+
+                            if session.delete_download(id) {
+                                // Broadcast to all tabs
+                                let _ = session.send_state();
                             }
                         }
                     }
-                    Err(e) => {
-                        tracing::error!("Error deserializing message: {} {}", text, e);
-                    }
+                }
+                Err(e) => {
+                    tracing::error!("Error deserializing message: {} {}", text, e);
                 }
             }
         }
-    };
-    tokio::task::spawn(fut);
+    }
+
+    // Clean up: remove this connection when the WebSocket closes
+    {
+        let store = &mut *STORE.lock().await;
+        if let Some(session) = store.sessions.get_mut(&session_id) {
+            session.remove_connection(connection_id);
+        }
+    }
+
+    tracing::info!(
+        "WebSocket connection {} closed for session {}",
+        connection_id,
+        session_id
+    );
 }

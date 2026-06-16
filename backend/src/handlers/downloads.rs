@@ -47,12 +47,12 @@ pub async fn download(req: &mut Request, res: &mut Response, depot: &mut Depot) 
         HeaderValue::from_static("application/octet-stream"),
     );
 
-    // Don't try to send state if somehow the session has not connected
-    if session.tx.is_some() {
-        session
-            .send_state()
-            .expect("Failed to buffer state message");
+    // Broadcast state to all connected tabs (if any)
+    if !session.connections.is_empty() {
+        if let Err(e) = session.send_state() {
+            tracing::warn!("Failed to send state update: {}", e);
+        }
     } else {
-        tracing::warn!("Download being made without any connection websocket");
+        tracing::warn!("Download being made without any WebSocket connections");
     }
 }

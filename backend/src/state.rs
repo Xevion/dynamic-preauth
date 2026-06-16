@@ -81,7 +81,7 @@ impl State {
                 last_seen: now,
                 last_request: now,
                 first_seen: now,
-                tx: None,
+                connections: HashMap::new(),
             },
         );
 
