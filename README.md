@@ -26,7 +26,7 @@ When ran, a simple GET request will be made to the server, which will notify the
 ## How it works
 
 1. At build time, the server has release builds for the major target platforms built. They are made available to the server at runtime.
-2. At runtime, the server locates constant time variables within the executable, and remembers their location for later download.
+2. At runtime, the server locates a fixed marker (a 1024-byte run of bytes) embedded in each executable, and remembers its location for later download.
 3. When a user requests an executable, the server injects the user's authentication token into the executable, overwriting whatever was located at the remembered location.
 
 Now, when the user runs the executable, it will have the user's authentication token embedded within it - no recompilation or sidecar files required.
@@ -38,21 +38,22 @@ In the browser, all download identifiers are shown, and running any executable w
 
 ## Docker
 
-This application is carefully constructed via the [Dockerfile](Dockerfile), built with [Railway][railway] in mind.
+This application is carefully constructed via the [Dockerfile](Dockerfile), built with [Railway][railway] in mind. [cargo-chef][cargo-chef] is used to cache dependency builds across stages.
 
-- The [demo](./demo/src/main.rs) application is built for Windows and Linux x64 targets with the `rust:latest` image.
-- The [server](./src/main.rs) is built for Linux with the `rust:alpine` image.
-- The [frontend](./frontend) is built with `node:latest` and pre-compressed with Gzip, Brotli, and Zstd.
-- The final application stage is ran on `alpine:latest`.
+- The [demo](./demo/src/main.rs) application is cross-compiled for Windows and Linux x64 targets.
+- The [server](./backend/src/main.rs) is built for Linux.
+- The [frontend](./frontend) is built with `node:22-slim` and pre-compressed with Gzip, Brotli, and Zstd.
+- The final image runs on `debian:12-slim` as a non-root user.
 
 ## Security
 
-I am not a security engineer, and I've taken zero courses, cerifications, or training in any way. I am not qualified to make any claims about the security of this application.
+I am not a security engineer, and I've taken zero courses, certifications, or training in any way. I am not qualified to make any claims about the security of this application.
 
 However, this application is built with minimal attack surfaces, and the host is completely stateless. The Railway instance is public and linked (although, unfortunately, don't show any build logs). Upon restart, all session data is lost.
 
-Sessions are not regularly purged (yet, see #5), and overall the server isn't super-well optimized. This is just a proof concept, closer to a silly idea than a serious demo/project.
+Sessions are not regularly purged (yet, see #5), and overall the server isn't super-well optimized. This is just a proof of concept, closer to a silly idea than a serious demo/project.
 
 [demo]: https://dynamic-preauth.xevion.dev?utm_source=github
 [railway]: https://railway.app
 [salvo]: https://salvo.rs
+[cargo-chef]: https://github.com/LukeMathWalker/cargo-chef
