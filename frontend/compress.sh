@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+# Astro's outDir (see astro.config.mjs); run this from the frontend dir.
+OUT_DIR="../public"
+
 multicompress() {
     local file="$1"
     if command -v gzip &>/dev/null; then
@@ -23,13 +26,13 @@ commas() {
 }
 
 get_size() {
-    find ./dist/ -type f -name $1 -print0 | du --files0-from=- -bc | tail -n1 | awk '{print $1}' | commas
+    find "$OUT_DIR" -type f -name $1 -print0 | du --files0-from=- -bc | tail -n1 | awk '{print $1}' | commas
 }
 
 export -f multicompress
 
-# find only non-compressed files in dist folder
-FILES=$(find ./dist/ -type f ! -name '*.gz' ! -name '*.br' ! -name '*.zst')
+# find only non-compressed files in the output folder
+FILES=$(find "$OUT_DIR" -type f ! -name '*.gz' ! -name '*.br' ! -name '*.zst')
 
 # create pre-compressed variants gzip, zstd, brotli for dist files
 echo "$FILES" | xargs -n1 -P0 bash -c 'multicompress "$@"' _

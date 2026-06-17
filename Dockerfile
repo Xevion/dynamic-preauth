@@ -65,9 +65,17 @@ RUN cargo build --release --bin dynamic-preauth
 # Strip binary
 RUN strip target/release/dynamic-preauth
 
-# --- Frontend Builder Stage ---
+# Frontend Builder Stage
+# Mirror the repo layout (frontend/ as a subdir) so astro's `outDir: "../public"`
+# resolves to /app/public here, exactly as it resolves to repo-root public/ locally.
 FROM node:22-slim AS frontend-builder
-WORKDIR /app
+WORKDIR /app/frontend
+
+# Compression tools for compress.sh (gzip ships with the base image)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    brotli \
+    zstd \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@9 --activate
@@ -86,7 +94,7 @@ ENV RAILWAY_PUBLIC_DOMAIN=${RAILWAY_PUBLIC_DOMAIN}
 
 RUN pnpm build
 
-# Pre-compress static assets
+# Pre-compress static assets (outputs alongside the build in /app/public)
 RUN ./compress.sh
 
 # --- Runtime Stage ---
@@ -115,7 +123,7 @@ RUN addgroup --gid $GID $APP_USER \
 WORKDIR ${APP}
 
 # Copy built artifacts
-COPY --from=frontend-builder --chown=$APP_USER:$APP_USER /app/dist/ ./public/
+COPY --from=frontend-builder --chown=$APP_USER:$APP_USER /app/public/ ./public/
 COPY --from=demo-builder --chown=$APP_USER:$APP_USER /app/target/x86_64-pc-windows-gnu/release/demo.exe ./demo.exe
 COPY --from=demo-builder --chown=$APP_USER:$APP_USER /app/target/x86_64-unknown-linux-gnu/release/demo ./demo-linux
 COPY --from=server-builder --chown=$APP_USER:$APP_USER /app/target/release/dynamic-preauth ./dynamic-preauth

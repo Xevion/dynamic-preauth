@@ -20,6 +20,8 @@ if (
 // https://astro.build/config
 
 export default defineConfig({
+  // Output to the sibling `public/` dir the backend serves via StaticDir, so
+  // `cargo run` serves the built frontend directly with no copy step.
   outDir: "../public",
   build: {
     assets: "assets",
