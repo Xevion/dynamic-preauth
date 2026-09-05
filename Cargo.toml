@@ -13,7 +13,7 @@ dotenvy = "0.15.7"
 envy = "0.4.2"
 futures-util = "0.3.31"
 hex = "0.4.3"
-rand = "0.8.5"
+rand = "0.9.0"
 regex = "1.10"
 reqwest = { version = "0.12", default-features = false }
 salvo = { version = "0.74.3", features = ["affix-state", "catch-panic", "cors", "logging", "serve-static", "test", "websocket"] }
