@@ -16,7 +16,7 @@ hex = "0.4.3"
 rand = "0.9.0"
 regex = "1.10"
 reqwest = { version = "0.12", default-features = false }
-salvo = { version = "0.74.3", features = ["affix-state", "catch-panic", "cors", "logging", "serve-static", "test", "websocket"] }
+salvo = { version = "0.89.0", features = ["affix-state", "catch-panic", "cors", "logging", "serve-static", "test", "websocket"] }
 serde = { version = "1.0.216", features = ["derive"] }
 serde_json = "1.0.134"
 sha2 = "0.10.8"
